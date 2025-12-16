@@ -8,12 +8,12 @@
     │   ├── 21_XSD/
     │   │   └── HealthTime_Vocabulario.xsd # Vocabulário XSD para validação dos ficheiros XML.
     │   │
-    │   ├── 22_XML_EXEMPLOS/             # Exemplos dos três tipos de documentos XML desenvolvidos:
+    │   ├── 22_XML/             # Exemplos dos três tipos de documentos XML desenvolvidos:
     │   │   ├── Urgencia_HospitalX_...xml
     │   │   ├── Consultas_HospitalY_...xml
     │   │   └── Cirurgias_HospitalZ_...xml
     │   │
-    │   └── 23_DADOS_INICIAIS/             # Dados históricos fornecidos em CSV para integração inicial:
+    │   └── 23_DADOS_PEI/             # Dados históricos fornecidos em CSV para integração inicial:
     │       ├── Hospitais.csv
     │       ├── Servicos.csv
     │       ├── TemposEsperaConsultaCirurgia.csv
