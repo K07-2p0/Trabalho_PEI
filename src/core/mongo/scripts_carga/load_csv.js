@@ -1,50 +1,69 @@
-// 32_INTEGRACAO_MONGO/scripts_carga/load_csv.js
+// CODIGO_FONTE/INTEGRACAO_MONGO/scripts_carga/load_csv.js
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
-const connectDB = require('/db/connection');
 const mongoose = require('mongoose');
+const connectDB = require('../db/connection');
 
-// Definir um Schema temporário ou importar o Model de Hospitais se já existir
-const HospitalSchema = new mongoose.Schema({
-    codigo: String,
-    instituicao: String,
-    regiao: String,
-    concelho: String
-}, { strict: false });
+// Carrega o .env 
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
-const HospitalModel = mongoose.model('Hospitais', HospitalSchema);
+const loadSingleCSV = (envVarKey, collectionName, schemaDefinition) => {
+    return new Promise((resolve, reject) => {
+        // 1. Ler caminho relativo do .env
+        const relativePathFromEnv = process.env[envVarKey];
 
-// Caminho para o CSV (ajustar conforme a estrutura)
-const CSV_FILE_PATH = path.join(__dirname, '/20_DADOS_VOCABULARIO/23_DADOS_INICIAIS/Hospitais.csv');
+        if (!relativePathFromEnv) {
+            console.error(`>>> ERRO: Variável ${envVarKey} em falta no .env`);
+            return resolve(); 
+        }
 
-const loadHospitais = async () => {
-    await connectDB();
+        // 2. Construir caminho dinamicamente (Raiz + Caminho do .env)
+        const fullPath = path.join(__dirname, '../../../', relativePathFromEnv);
 
-    const results = [];
+        if (!fs.existsSync(fullPath)) {
+            console.error(`>>> ERRO: Ficheiro não existe: ${fullPath}`);
+            return resolve();
+        }
 
-    console.log(`>>> A ler ficheiro: ${CSV_FILE_PATH}`);
+        // Define o Model dinamicamente (para não criar ficheiros separados agora)
+        const Model = mongoose.models[collectionName] || mongoose.model(collectionName, new mongoose.Schema(schemaDefinition, { strict: false }));
+        const results = [];
 
-    fs.createReadStream(CSV_FILE_PATH)
-        .pipe(csv({ separator: ';' })) // Ajustar separador se for vírgula ou ponto-e-vírgula
-        .on('data', (data) => results.push(data))
-        .on('end', async () => {
-            try {
-                // Limpa a coleção antes de carregar (opcional)
-                await HospitalModel.deleteMany({}); 
-                console.log('>>> Coleção limpa.');
+        console.log(`>>> A ler: ${relativePathFromEnv}...`);
 
-                // Insere os dados
-                await HospitalModel.insertMany(results);
-                console.log(`>>> Sucesso! ${results.length} hospitais carregados.`);
-                
-                process.exit();
-            } catch (error) {
-                console.error('>>> Erro ao inserir dados:', error);
-                process.exit(1);
-            }
-        });
+        fs.createReadStream(fullPath)
+            .pipe(csv({ separator: ';' })) // ATENÇÃO: Confirma se o CSV usa ';' ou ','
+            .on('data', (data) => results.push(data))
+            .on('end', async () => {
+                try {
+                    await Model.deleteMany({});
+                    if (results.length > 0) {
+                        await Model.insertMany(results);
+                        console.log(`>>> [SUCESSO] ${collectionName}: ${results.length} registos.`);
+                    } else {
+                        console.log(`>>> [AVISO] ${collectionName} vazio.`);
+                    }
+                    resolve();
+                } catch (error) {
+                    console.error(`>>> [ERRO] ${collectionName}:`, error.message);
+                    resolve();
+                }
+            });
+    });
 };
 
-// Executar o script
-loadHospitais();
+const runLoader = async () => {
+    await connectDB();
+
+    // Carrega os CSVs definidos no .env
+    await loadSingleCSV('PATH_CSV_HOSPITAIS', 'Hospitais', { codigo: String, instituicao: String });
+    await loadSingleCSV('PATH_CSV_SERVICOS', 'Servicos', { servico: String, descricao: String });
+    await loadSingleCSV('PATH_CSV_ESPERA_CONSULTA', 'HistoricoConsultas', { hospital: String, especialidade: String });
+    await loadSingleCSV('PATH_CSV_ESPERA_URGENCIA', 'HistoricoUrgencias', { hospital: String, triagem: String });
+
+    console.log('>>> Carga terminada.');
+    process.exit();
+};
+
+runLoader();

@@ -1,20 +1,20 @@
-// 32_INTEGRACAO_MONGO/db/connection.js
+// CODIGO_FONTE/INTEGRACAO_MONGO/db/connection.js
 const mongoose = require('mongoose');
-require('dotenv').config(); // Para ler variáveis de ambiente se existirem
+const path = require('path');
 
-// URL de conexão (Pode vir de um ficheiro .env ou hardcoded para testes locais)
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/HealthTimeDB';
+// ALTERAÇÃO IMPORTANTE: 
+// Indica explicitamente onde está o ficheiro .env (3 pastas acima)
+require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const connectDB = async () => {
+    // Agora ele consegue ler o MONGO_URI do ficheiro .env na raiz
+    const uri = process.env.MONGO_URI || 'mongodb://localhost:27017/HealthTimeDB';
+
     try {
-        await mongoose.connect(MONGO_URI, {
-            // Opções modernas do driver MongoDB (algumas já são default nas versões novas)
-            serverSelectionTimeoutMS: 5000
-        });
+        await mongoose.connect(uri);
         console.log('>>> MongoDB Conectado com Sucesso!');
     } catch (err) {
         console.error('>>> Erro ao conectar ao MongoDB:', err.message);
-        // Encerra o processo se a conexão falhar
         process.exit(1);
     }
 };
