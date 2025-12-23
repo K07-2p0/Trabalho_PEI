@@ -2,7 +2,7 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
-const connectDB = require('../db/connection');
+const connectDB = require('/db/connection');
 const mongoose = require('mongoose');
 
 // Definir um Schema temporário ou importar o Model de Hospitais se já existir
@@ -16,7 +16,7 @@ const HospitalSchema = new mongoose.Schema({
 const HospitalModel = mongoose.model('Hospitais', HospitalSchema);
 
 // Caminho para o CSV (ajustar conforme a estrutura)
-const CSV_FILE_PATH = path.join(__dirname, '../../20_DADOS_VOCABULARIO/23_DADOS_INICIAIS/Hospitais.csv');
+const CSV_FILE_PATH = path.join(__dirname, '/20_DADOS_VOCABULARIO/23_DADOS_INICIAIS/Hospitais.csv');
 
 const loadHospitais = async () => {
     await connectDB();
