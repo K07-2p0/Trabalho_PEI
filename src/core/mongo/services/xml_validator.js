@@ -3,29 +3,27 @@ const xsd = require('libxml-xsd');
 const fs = require('fs');
 const path = require('path');
 
-// Carrega o .env (recuando 3 pastas até à raiz)
+// Carrega o .env (3 níveis acima)
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 const validateXML = (xmlString) => {
     return new Promise((resolve, reject) => {
         
-        // 1. Ler o caminho relativo do ficheiro .env (ex: ./DADOS_VOCABULARIO/...)
-        const relativePathFromEnv = process.env.PATH_XSD;
+        // 1. Chama a variável do .env
+        const envVarPath = process.env.PATH_XSD;
 
-        if (!relativePathFromEnv) {
-            return reject(new Error('ERRO: PATH_XSD não definido no .env'));
+        if (!envVarPath) {
+            return reject(new Error('ERRO: Variável PATH_XSD em falta no .env'));
         }
 
-        // 2. Construir o caminho dinamicamente
-        // __dirname = pasta atual (services)
-        // ../../../ = volta à raiz do projeto (Trabalho_PEI)
-        // relativePathFromEnv = o caminho que definiste no .env
-        const fullPath = path.join(__dirname, '../../../', relativePathFromEnv);
+        // 2. Resolver o caminho absoluto
+        // NOTA: Como o teu caminho no .env começa por "./Trabalho_PEI/", 
+        // temos de recuar 4 níveis (até ao pai da pasta Trabalho_PEI) para o caminho bater certo.
+        const fullPath = path.join(__dirname, '../../../../', envVarPath);
 
         // 3. Verificar existência
         if (!fs.existsSync(fullPath)) {
-            // Mostra o caminho que tentou aceder para ajudar a debuggar
-            return reject(new Error(`XSD não encontrado. O código tentou aceder a: ${fullPath}`));
+            return reject(new Error(`XSD não encontrado no caminho: ${fullPath}`));
         }
 
         // 4. Validar
