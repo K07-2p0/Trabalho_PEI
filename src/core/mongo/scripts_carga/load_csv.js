@@ -1,53 +1,81 @@
-// CODIGO_FONTE/INTEGRACAO_MONGO/scripts_carga/load_csv.js
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
 const mongoose = require('mongoose');
 const connectDB = require('../db/connection');
 
-// Carrega o .env (3 níveis acima)
-require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
+// 1. Carrega o .env (Ajusta o recuo conforme a profundidade da pasta: src/core/mongo/scripts_carga = 4 níveis)
+require('dotenv').config({ path: path.join(__dirname, '../../../../.env') });
 
-const loadSingleCSV = (envVarKey, collectionName, schemaDefinition) => {
+/**
+ * Função auxiliar para importar um Modelo dinamicamente com base no caminho do .env
+ * @param {string} modelFileName - O nome do ficheiro (ex: 'Hospital')
+ * @returns {mongoose.Model} - O modelo Mongoose carregado
+ */
+const getModelFromEnv = (modelFileName) => {
+    const relativeModelPath = process.env.PATH_MODELS;
+
+    if (!relativeModelPath) {
+        console.error('>>> ERRO CRÍTICO: Variável PATH_MODELS não definida no .env');
+        process.exit(1);
+    }
+
+    // Resolve o caminho absoluto: Raiz do Projeto + Caminho do .env
+    // Nota: O recuo '../../../../' leva-nos à raiz onde o comando node é executado (geralmente)
+    // Se o PATH_MODELS já inclui "Trabalho_PEI", temos de garantir que estamos na pasta pai disso.
+    const fullPath = path.join(__dirname, '../../../../', relativeModelPath, modelFileName);
+
+    try {
+        return require(fullPath);
+    } catch (error) {
+        console.error(`>>> ERRO ao importar modelo de: ${fullPath}`);
+        console.error(error.message);
+        process.exit(1);
+    }
+};
+
+/**
+ * Carrega um único CSV para uma Coleção/Modelo
+ */
+const loadSingleCSV = (envVarKey, Model) => {
     return new Promise((resolve, reject) => {
         
-        // 1. Chama a variável do .env
-        const envVarPath = process.env[envVarKey];
+        // Ler caminho do CSV do .env
+        const csvRelativePath = process.env[envVarKey];
 
-        if (!envVarPath) {
+        if (!csvRelativePath) {
             console.error(`>>> ERRO: Variável ${envVarKey} não encontrada no .env`);
-            return resolve(); // Resolve para não bloquear os outros ficheiros
+            return resolve(); 
         }
 
-        // 2. Resolver caminho (Recua 4 níveis para compensar o "./Trabalho_PEI/" no path)
-        const fullPath = path.join(__dirname, '../../../../', envVarPath);
+        const fullCsvPath = path.join(__dirname, '../../../../', csvRelativePath);
 
-        if (!fs.existsSync(fullPath)) {
-            console.error(`>>> ERRO: Ficheiro não existe: ${fullPath}`);
+        if (!fs.existsSync(fullCsvPath)) {
+            console.error(`>>> ERRO: Ficheiro CSV não existe: ${fullCsvPath}`);
             return resolve();
         }
 
-        // Define o Model dinamicamente
-        const Model = mongoose.models[collectionName] || mongoose.model(collectionName, new mongoose.Schema(schemaDefinition, { strict: false }));
         const results = [];
+        console.log(`>>> A carregar dados para o modelo [${Model.modelName}]...`);
 
-        console.log(`>>> A carregar ${collectionName}...`);
-
-        fs.createReadStream(fullPath)
-            .pipe(csv({ separator: ';' })) // Assume separador ';' (comum em CSVs portugueses)
+        fs.createReadStream(fullCsvPath)
+            .pipe(csv({ separator: ';' })) 
             .on('data', (data) => results.push(data))
             .on('end', async () => {
                 try {
-                    await Model.deleteMany({}); // Limpa dados antigos
+                    // Limpa a coleção atual
+                    await Model.deleteMany({}); 
+                    
                     if (results.length > 0) {
+                        // Insere os novos dados
                         await Model.insertMany(results);
-                        console.log(`>>> [SUCESSO] ${collectionName}: ${results.length} registos inseridos.`);
+                        console.log(`>>> [SUCESSO] ${Model.modelName}: ${results.length} registos inseridos.`);
                     } else {
-                        console.log(`>>> [AVISO] ${collectionName}: O ficheiro estava vazio.`);
+                        console.log(`>>> [AVISO] O ficheiro CSV para ${Model.modelName} estava vazio.`);
                     }
                     resolve();
                 } catch (error) {
-                    console.error(`>>> [ERRO] Falha ao inserir ${collectionName}:`, error.message);
+                    console.error(`>>> [ERRO] Falha ao inserir em ${Model.modelName}:`, error.message);
                     resolve();
                 }
             });
@@ -55,21 +83,32 @@ const loadSingleCSV = (envVarKey, collectionName, schemaDefinition) => {
 };
 
 const runLoader = async () => {
+    // Conectar à BD
     await connectDB();
 
-    // Executa a carga para as 4 variáveis definidas no teu .env
-    
-    // 1. Hospitais
-    await loadSingleCSV('PATH_CSV_HOSPITAIS', 'Hospitais', { codigo: String, instituicao: String });
-    
-    // 2. Serviços
-    await loadSingleCSV('PATH_CSV_SERVICOS', 'Servicos', { servico: String, descricao: String });
-    
-    // 3. Tempos Espera Consulta
-    await loadSingleCSV('PATH_CSV_ESPERA_CONSULTA', 'HistoricoConsultas', { hospital: String, especialidade: String });
+    console.log('>>> A importar modelos dinamicamente via .env...');
 
-    // 4. Tempos Espera Urgência
-    await loadSingleCSV('PATH_CSV_ESPERA_URGENCIA', 'HistoricoUrgencias', { hospital: String, triagem: String });
+    // 2. Importar os Modelos usando a função auxiliar
+    // Certifica-te que os nomes dos ficheiros (ex: 'Hospital') batem certo com o que está na pasta models
+    const HospitalModel = getModelFromEnv('Hospital');
+    const ServicoModel = getModelFromEnv('Servico');
+    const UrgenciaModel = getModelFromEnv('Urgencia'); 
+    const ConsultaCirurgiaModel = getModelFromEnv('ConsultaCirurgia'); 
+
+    // 3. Executar a Carga (Mapeamento: Variável ENV do CSV -> Modelo Importado)
+    
+    // Carregar Hospitais
+    await loadSingleCSV('PATH_CSV_HOSPITAIS', HospitalModel);
+    
+    // Carregar Serviços
+    await loadSingleCSV('PATH_CSV_SERVICOS', ServicoModel);
+    
+    // Carregar Histórico de Consultas/Cirurgias
+    // Nota: Assume que o modelo ConsultaCirurgia está preparado para receber estes dados
+    await loadSingleCSV('PATH_CSV_ESPERA_CONSULTA', ConsultaCirurgiaModel);
+
+    // Carregar Histórico de Urgências
+    await loadSingleCSV('PATH_CSV_ESPERA_URGENCIA', UrgenciaModel);
 
     console.log('>>> Processo de carga terminado.');
     process.exit();
