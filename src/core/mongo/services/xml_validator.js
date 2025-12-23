@@ -4,7 +4,7 @@ const fs = require('fs');
 const path = require('path');
 
 // Carrega o .env (3 níveis acima)
-require('dotenv').config({ path: path.join(__dirname, '.env') });
+require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 
 const validateXML = (xmlString) => {
     return new Promise((resolve, reject) => {
