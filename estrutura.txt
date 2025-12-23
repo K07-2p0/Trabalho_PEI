@@ -4,29 +4,29 @@
     ├── DOCUMENTACAO/
     │   └── Relatorio_PEI.pdf             # Relatório obrigatório com a justificação da modelação MongoDB, contextualização e apreciação crítica.
     │
-    ├── 20_DADOS_VOCABULARIO/
-    │   ├── 21_XSD/
+    ├── DADOS_VOCABULARIO/
+    │   ├── XSD/
     │   │   └── HealthTime_Vocabulario.xsd # Vocabulário XSD para validação dos ficheiros XML.
     │   │
-    │   ├── 22_XML/             # Exemplos dos três tipos de documentos XML desenvolvidos:
+    │   ├── XML/             # Exemplos dos três tipos de documentos XML desenvolvidos:
     │   │   ├── Urgencia_HospitalX_...xml
     │   │   ├── Consultas_HospitalY_...xml
     │   │   └── Cirurgias_HospitalZ_...xml
     │   │
-    │   └── 23_DADOS_PEI/             # Dados históricos fornecidos em CSV para integração inicial:
+    │   └── DADOS_PEI/             # Dados históricos fornecidos em CSV para integração inicial:
     │       ├── Hospitais.csv
     │       ├── Servicos.csv
     │       ├── TemposEsperaConsultaCirurgia.csv
     │       └── TemposEsperaEmergencia.csv
     │
-    └── 30_CODIGO_FONTE/
-        ├── 31_API_REST/                   # Implementação da API REST (Consumo XML e Disponibilização JSON) 
+    └── CODIGO_FONTE/
+        ├── API_REST/                   # Implementação da API REST (Consumo XML e Disponibilização JSON) 
         │   ├── server.js / server.py      # Ficheiro principal do servidor/API
         │   └── routes/
         │       ├── submissao.js           # Lógica para os endpoints POST (/submissao/...)
         │       └── relatorios.js          # Lógica para os endpoints GET (/relatorios/...)
         │
-        ├── 32_INTEGRACAO_MONGO/           # Scripts e lógica para a Pipeline de Integração 
+        ├── INTEGRACAO_MONGO/           # Scripts e lógica para a Pipeline de Integração 
         │   ├── db/
         │   │   └── connection.js          # Configuração da conexão e MongoDB
         │   │
@@ -37,7 +37,7 @@
         │       ├── xml_validator.js       # Módulo para validação XSD
         │       └── data_transformer.js    # Módulo de transformação XML -> JSON/Documento MongoDB
         │
-        └── 33_CONSULTAS_AGREGACAO/        # Ficheiros com as Aggregation Pipelines para os relatórios analíticos 
+        └── CONSULTAS_AGREGACAO/        # Ficheiros com as Aggregation Pipelines para os relatórios analíticos 
             ├── pipelines/
             │   ├── media_espera_urgencia.js
             │   ├── top10_pediatrico.js

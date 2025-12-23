@@ -1,33 +1,40 @@
-// 32_INTEGRACAO_MONGO/services/xml_validator.js
+// CODIGO_FONTE/INTEGRACAO_MONGO/services/xml_validator.js
 const xsd = require('libxml-xsd');
 const fs = require('fs');
 const path = require('path');
 
-// Caminho para o ficheiro XSD (ajusta o caminho conforme a tua estrutura real)
-const XSD_PATH = path.join(__dirname, '../../20_DADOS_VOCABULARIO/21_XSD/HealthTime_Vocabulario.xsd');
+// Carrega o .env (3 níveis acima)
+require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 
-/**
- * Valida uma string XML contra o Schema XSD definido.
- * @param {string} xmlString - O conteúdo do XML a validar.
- * @returns {Promise<boolean>} - Retorna true se válido, ou lança erro com detalhes.
- */
 const validateXML = (xmlString) => {
     return new Promise((resolve, reject) => {
-        // Verifica se o XSD existe
-        if (!fs.existsSync(XSD_PATH)) {
-            return reject(new Error(`Ficheiro XSD não encontrado em: ${XSD_PATH}`));
+        
+        // 1. Chama a variável do .env
+        const envVarPath = process.env.PATH_XSD;
+
+        if (!envVarPath) {
+            return reject(new Error('ERRO: Variável PATH_XSD em falta no .env'));
         }
 
-        xsd.parseFile(XSD_PATH, (err, schema) => {
-            if (err) return reject(new Error('Erro ao carregar XSD: ' + err.message));
+        // 2. Resolver o caminho absoluto
+        // NOTA: Como o teu caminho no .env começa por "./Trabalho_PEI/", 
+        // temos de recuar 4 níveis (até ao pai da pasta Trabalho_PEI) para o caminho bater certo.
+        const fullPath = path.join(__dirname, '../../../../', envVarPath);
+
+        // 3. Verificar existência
+        if (!fs.existsSync(fullPath)) {
+            return reject(new Error(`XSD não encontrado no caminho: ${fullPath}`));
+        }
+
+        // 4. Validar
+        xsd.parseFile(fullPath, (err, schema) => {
+            if (err) return reject(new Error('Erro ao processar XSD: ' + err.message));
 
             schema.validate(xmlString, (validationErrors) => {
                 if (validationErrors) {
-                    // Formata os erros para serem mais legíveis
                     const errorMessages = validationErrors.map(e => e.message).join('; ');
                     return reject(new Error(`XML Inválido: ${errorMessages}`));
                 }
-                // Se não houver erros
                 resolve(true);
             });
         });
