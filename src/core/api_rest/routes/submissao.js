@@ -1,11 +1,11 @@
 const express = require('express');
 const router = express.Router();
-const { validateXML } = require('../../INTEGRACAO_MONGO/services/xml_validator');
-const { transformUrgencia, transformConsulta } = require('../../INTEGRACAO_MONGO/services/data_transformer');
+const xmlValidator = require('../../mongo/services/xml_validator');
+const dataTransformer = require('../../mongo/services/data_transformer');
 
 // Importação dos Modelos Mongoose
-const Urgencia = require('../../CONSULTAS_AGREGACAO/models/Urgencia');
-const Consulta = require('../../CONSULTAS_AGREGACAO/models/Consulta');
+const Urgencia = require('../../consultas_agregacao/models/Urgencia');
+const Consulta = require('../../consultas_agregacao/models/ConsultaCirurgia');
 
 /**
  * POST /submissao/urgencia

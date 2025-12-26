@@ -1,9 +1,9 @@
 const express = require('express');
 const path = require('path');
 // Carrega o .env da raiz do projeto (recua 2 níveis de API_REST até Trabalho_PEI)
-require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+require('dotenv').config({ path: path.join(__dirname, '../../../.env') });
 
-const connectDB = require('../INTEGRACAO_MONGO/db/connection');
+const connectDB = require('../mongo/db/connection');
 const submissaoRoutes = require('./routes/submissao');
 const relatoriosRoutes = require('./routes/relatorios');
 
