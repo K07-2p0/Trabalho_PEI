@@ -1,6 +1,41 @@
 const express = require('express');
 const router = express.Router();
-const Urgencia = require('../../CONSULTAS_AGREGACAO/models/Urgencia');
+const getMediaUtentesEspera = require('../../consultas_agregacao/pipelines/media_espera_urgencia');
+
+/**
+ * REQUISITO 1:
+ * GET /api/v1/relatorios/urgencia/media-espera
+ * Query params esperados: ?inicio=YYYY-MM-DD&fim=YYYY-MM-DD
+ */
+router.get('/urgencia/media-espera', async (req, res) => {
+    try {
+        const { inicio, fim } = req.query;
+
+        // Validação básica se as datas existem
+        if (!inicio || !fim) {
+            return res.status(400).json({ 
+                erro: "É necessário fornecer as datas de 'inicio' e 'fim' (formato YYYY-MM-DD)." 
+            });
+        }
+
+        // Converter strings para objetos Date
+        const dataInicio = new Date(inicio);
+        const dataFim = new Date(fim);
+        // Garantir que a data fim vai até ao último segundo do dia
+        dataFim.setHours(23, 59, 59, 999);
+
+        const resultado = await getMediaUtentesEspera(dataInicio, dataFim);
+        
+        res.json({
+            periodo: { desde: inicio, ate: fim },
+            total_resultados: resultado.length,
+            dados: resultado
+        });
+
+    } catch (error) {
+        res.status(500).json({ erro: "Erro ao gerar relatório: " + error.message });
+    }
+});
 
 /**
  * GET /relatorios/espera-atual
