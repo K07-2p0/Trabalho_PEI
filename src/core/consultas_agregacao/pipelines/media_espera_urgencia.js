@@ -22,8 +22,7 @@ const getMediaUtentesEspera = async (dataInicio, dataFim) => {
                 _id: {
                     tipologia: "$tipologia",
                     triagem: "$triagem"
-                },
-                media_utentes: { $avg: "$utentes_em_espera" }
+                }, media_utentes: { $avg: "$utentes_em_espera" }
             }
         },
         {
