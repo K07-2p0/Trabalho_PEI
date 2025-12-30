@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Consulta>
+    <Cabecalho>
+        <HospitalID>H001</HospitalID>
+        <HospitalNome>Hospital São João</HospitalNome>
+        <PeriodoReferencia>
+            <Mes>12</Mes>
+            <Ano>2025</Ano>
+        </PeriodoReferencia>
+    </Cabecalho>
+    <Especialidades>
+        <Especialidade>
+            <NomeEspecialidade>Cardiologia</NomeEspecialidade>
+            <PopulacaoAlvo>Ambos</PopulacaoAlvo>
+            <ListasEspera>
+                <Geral>450</Geral>
+                <NaoOncologica>420</NaoOncologica>
+                <Oncologica>30</Oncologica>
+            </ListasEspera>
+            <TemposMediosResposta>
+                <Normal>60</Normal>
+                <Prioritario>30</Prioritario>
+                <MuitoPrioritario>15</MuitoPrioritario>
+            </TemposMediosResposta>
+            <TemposOncologia>
+                <Normal>45</Normal>
+                <Prioritario>20</Prioritario>
+                <MuitoPrioritario>10</MuitoPrioritario>
+            </TemposOncologia>
+        </Especialidade>
+        <Especialidade>
+            <NomeEspecialidade>Pediatria</NomeEspecialidade>
+            <PopulacaoAlvo>Criança</PopulacaoAlvo>
+            <ListasEspera>
+                <Geral>280</Geral>
+                <NaoOncologica>270</NaoOncologica>
+                <Oncologica>10</Oncologica>
+            </ListasEspera>
+            <TemposMediosResposta>
+                <Normal>45</Normal>
+                <Prioritario>20</Prioritario>
+                <MuitoPrioritario>10</MuitoPrioritario>
+            </TemposMediosResposta>
+        </Especialidade>
+    </Especialidades>
+</Consulta>
