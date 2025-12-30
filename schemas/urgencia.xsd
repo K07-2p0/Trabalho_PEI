@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+           elementFormDefault="qualified">
+
+    <!-- Elemento raiz: Urgencia -->
+    <xs:element name="Urgencia">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- Cabeçalho com identificação do hospital e timestamp -->
+                <xs:element name="Cabecalho">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="HospitalID" type="xs:string"/>
+                            <xs:element name="HospitalNome" type="xs:string"/>
+                            <xs:element name="Morada" type="xs:string"/>
+                            <xs:element name="Timestamp" type="xs:dateTime"/>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+
+                <!-- Dados da Urgência -->
+                <xs:element name="Dados">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="TipologiaUrgencia">
+                                <xs:simpleType>
+                                    <xs:restriction base="xs:string">
+                                        <xs:enumeration value="Geral"/>
+                                        <xs:enumeration value="Pediátrica"/>
+                                        <xs:enumeration value="Obstétrica"/>
+                                        <xs:enumeration value="Médico-Cirúrgica"/>
+                                        <xs:enumeration value="Polivalente"/>
+                                    </xs:restriction>
+                                </xs:simpleType>
+                            </xs:element>
+
+                            <xs:element name="EstadoUrgencia">
+                                <xs:simpleType>
+                                    <xs:restriction base="xs:string">
+                                        <xs:enumeration value="Aberta"/>
+                                        <xs:enumeration value="Fechada"/>
+                                    </xs:restriction>
+                                </xs:simpleType>
+                            </xs:element>
+
+                            <!-- Utentes em espera por categoria de triagem -->
+                            <xs:element name="UtentesEmEspera">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="NaoUrgente" type="xs:nonNegativeInteger"/>
+                                        <xs:element name="PoucoUrgente" type="xs:nonNegativeInteger"/>
+                                        <xs:element name="Urgente" type="xs:nonNegativeInteger"/>
+                                        <xs:element name="MuitoUrgente" type="xs:nonNegativeInteger"/>
+                                        <xs:element name="Emergente" type="xs:nonNegativeInteger" minOccurs="0"/>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+
+                            <!-- Utentes em observação por categoria de triagem -->
+                            <xs:element name="UtentesEmObservacao">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="NaoUrgente" type="xs:nonNegativeInteger"/>
+                                        <xs:element name="PoucoUrgente" type="xs:nonNegativeInteger"/>
+                                        <xs:element name="Urgente" type="xs:nonNegativeInteger"/>
+                                        <xs:element name="MuitoUrgente" type="xs:nonNegativeInteger"/>
+                                        <xs:element name="Emergente" type="xs:nonNegativeInteger" minOccurs="0"/>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+
+                            <!-- Tempo médio de espera em minutos (opcional) -->
+                            <xs:element name="TempoMedioEspera" type="xs:nonNegativeInteger" minOccurs="0"/>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>
