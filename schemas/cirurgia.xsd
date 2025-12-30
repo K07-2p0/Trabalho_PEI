@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+           elementFormDefault="qualified">
+
+    <!-- Elemento raiz: Cirurgia -->
+    <xs:element name="Cirurgia">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- Cabeçalho com identificação do hospital e período de referência -->
+                <xs:element name="Cabecalho">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="HospitalID" type="xs:string"/>
+                            <xs:element name="HospitalNome" type="xs:string"/>
+                            <xs:element name="PeriodoReferencia">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="Mes" type="xs:positiveInteger">
+                                            <xs:annotation>
+                                                <xs:documentation>Mês (1-12)</xs:documentation>
+                                            </xs:annotation>
+                                        </xs:element>
+                                        <xs:element name="Ano" type="xs:positiveInteger">
+                                            <xs:annotation>
+                                                <xs:documentation>Ano (ex: 2025)</xs:documentation>
+                                            </xs:annotation>
+                                        </xs:element>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+
+                <!-- Lista de Especialidades Cirúrgicas -->
+                <xs:element name="EspecialidadesCirurgicas">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="Especialidade" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="NomeEspecialidade" type="xs:string">
+                                            <xs:annotation>
+                                                <xs:documentation>Ex: Cirurgia Geral, Ortopedia, Neurocirurgia</xs:documentation>
+                                            </xs:annotation>
+                                        </xs:element>
+
+                                        <!-- Listas de Espera para Cirurgia -->
+                                        <xs:element name="ListasEspera">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="Geral" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Número de utentes em lista de espera geral</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                    <xs:element name="NaoOncologica" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Número de utentes em lista não oncológica</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                    <xs:element name="Oncologica" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Número de utentes em lista oncológica</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+
+                                        <!-- Tempos Médios de Espera para Cirurgia Programada (em dias) -->
+                                        <xs:element name="TemposMediosEspera">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="ListaGeral" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Tempo médio em dias</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                    <xs:element name="ListaNaoOncologica" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Tempo médio em dias</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                    <xs:element name="ListaOncologica" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Tempo médio em dias</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+
+                                        <!-- Prioridade Clínica (opcional) -->
+                                        <xs:element name="DistribuicaoPrioridades" minOccurs="0">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="Normal" type="xs:nonNegativeInteger"/>
+                                                    <xs:element name="Prioritaria" type="xs:nonNegativeInteger"/>
+                                                    <xs:element name="MuitoPrioritaria" type="xs:nonNegativeInteger"/>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+
+                                        <!-- Número de cirurgias realizadas no período (opcional) -->
+                                        <xs:element name="CirurgiasRealizadas" type="xs:nonNegativeInteger" minOccurs="0">
+                                            <xs:annotation>
+                                                <xs:documentation>Total de cirurgias realizadas no mês</xs:documentation>
+                                            </xs:annotation>
+                                        </xs:element>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>
