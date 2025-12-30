@@ -1,46 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Consulta>
+<ReportConsulta>
     <Cabecalho>
         <HospitalID>H001</HospitalID>
-        <HospitalNome>Hospital São João</HospitalNome>
-        <PeriodoReferencia>
-            <Mes>12</Mes>
-            <Ano>2025</Ano>
-        </PeriodoReferencia>
+        <Periodo>2025-12</Periodo>
     </Cabecalho>
-    <Especialidades>
+    <ListaEspecialidades>
         <Especialidade>
-            <NomeEspecialidade>Cardiologia</NomeEspecialidade>
+            <Nome>Cardiologia</Nome>
             <PopulacaoAlvo>Ambos</PopulacaoAlvo>
-            <ListasEspera>
-                <Geral>450</Geral>
-                <NaoOncologica>420</NaoOncologica>
-                <Oncologica>30</Oncologica>
-            </ListasEspera>
-            <TemposMediosResposta>
-                <Normal>60</Normal>
-                <Prioritario>30</Prioritario>
-                <MuitoPrioritario>15</MuitoPrioritario>
-            </TemposMediosResposta>
-            <TemposOncologia>
-                <Normal>45</Normal>
-                <Prioritario>20</Prioritario>
-                <MuitoPrioritario>10</MuitoPrioritario>
-            </TemposOncologia>
+            <TipoLista>Geral</TipoLista>
+            <TempoMuitoPrioritario>15</TempoMuitoPrioritario>
+            <TempoPrioritario>30</TempoPrioritario>
+            <TempoNormal>60</TempoNormal>
         </Especialidade>
         <Especialidade>
-            <NomeEspecialidade>Pediatria</NomeEspecialidade>
+            <Nome>Pediatria</Nome>
             <PopulacaoAlvo>Criança</PopulacaoAlvo>
-            <ListasEspera>
-                <Geral>280</Geral>
-                <NaoOncologica>270</NaoOncologica>
-                <Oncologica>10</Oncologica>
-            </ListasEspera>
-            <TemposMediosResposta>
-                <Normal>45</Normal>
-                <Prioritario>20</Prioritario>
-                <MuitoPrioritario>10</MuitoPrioritario>
-            </TemposMediosResposta>
+            <TipoLista>Geral</TipoLista>
+            <TempoMuitoPrioritario>10</TempoMuitoPrioritario>
+            <TempoPrioritario>20</TempoPrioritario>
+            <TempoNormal>45</TempoNormal>
         </Especialidade>
-    </Especialidades>
-</Consulta>
+    </ListaEspecialidades>
+</ReportConsulta>
