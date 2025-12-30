@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Cirurgia>
+    <Cabecalho>
+        <HospitalID>H001</HospitalID>
+        <HospitalNome>Hospital São João</HospitalNome>
+        <PeriodoReferencia>
+            <Mes>12</Mes>
+            <Ano>2025</Ano>
+        </PeriodoReferencia>
+    </Cabecalho>
+    <EspecialidadesCirurgicas>
+        <Especialidade>
+            <NomeEspecialidade>Cirurgia Geral</NomeEspecialidade>
+            <ListasEspera>
+                <Geral>320</Geral>
+                <NaoOncologica>280</NaoOncologica>
+                <Oncologica>40</Oncologica>
+            </ListasEspera>
+            <TemposMediosEspera>
+                <ListaGeral>90</ListaGeral>
+                <ListaNaoOncologica>95</ListaNaoOncologica>
+                <ListaOncologica>60</ListaOncologica>
+            </TemposMediosEspera>
+            <DistribuicaoPrioridades>
+                <Normal>180</Normal>
+                <Prioritaria>100</Prioritaria>
+                <MuitoPrioritaria>40</MuitoPrioritaria>
+            </DistribuicaoPrioridades>
+            <CirurgiasRealizadas>85</CirurgiasRealizadas>
+        </Especialidade>
+        <Especialidade>
+            <NomeEspecialidade>Ortopedia</NomeEspecialidade>
+            <ListasEspera>
+                <Geral>550</Geral>
+                <NaoOncologica>535</NaoOncologica>
+                <Oncologica>15</Oncologica>
+            </ListasEspera>
+            <TemposMediosEspera>
+                <ListaGeral>120</ListaGeral>
+                <ListaNaoOncologica>122</ListaNaoOncologica>
+                <ListaOncologica>75</ListaOncologica>
+            </TemposMediosEspera>
+            <DistribuicaoPrioridades>
+                <Normal>350</Normal>
+                <Prioritaria>150</Prioritaria>
+                <MuitoPrioritaria>50</MuitoPrioritaria>
+            </DistribuicaoPrioridades>
+            <CirurgiasRealizadas>120</CirurgiasRealizadas>
+        </Especialidade>
+    </EspecialidadesCirurgicas>
+</Cirurgia>
