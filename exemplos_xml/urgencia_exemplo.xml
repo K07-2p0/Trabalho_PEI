@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Urgencia>
+    <Cabecalho>
+        <HospitalID>H001</HospitalID>
+        <HospitalNome>Hospital São João</HospitalNome>
+        <Morada>Alameda Prof. Hernâni Monteiro, 4200-319 Porto</Morada>
+        <Timestamp>2025-12-30T10:15:00</Timestamp>
+    </Cabecalho>
+    <Dados>
+        <TipologiaUrgencia>Geral</TipologiaUrgencia>
+        <EstadoUrgencia>Aberta</EstadoUrgencia>
+        <UtentesEmEspera>
+            <NaoUrgente>5</NaoUrgente>
+            <PoucoUrgente>12</PoucoUrgente>
+            <Urgente>8</Urgente>
+            <MuitoUrgente>3</MuitoUrgente>
+            <Emergente>1</Emergente>
+        </UtentesEmEspera>
+        <UtentesEmObservacao>
+            <NaoUrgente>2</NaoUrgente>
+            <PoucoUrgente>7</PoucoUrgente>
+            <Urgente>15</Urgente>
+            <MuitoUrgente>4</MuitoUrgente>
+            <Emergente>0</Emergente>
+        </UtentesEmObservacao>
+        <TempoMedioEspera>45</TempoMedioEspera>
+    </Dados>
+</Urgencia>
