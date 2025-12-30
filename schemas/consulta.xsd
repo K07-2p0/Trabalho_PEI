@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+           elementFormDefault="qualified">
+
+    <!-- Elemento raiz: Consulta -->
+    <xs:element name="Consulta">
+        <xs:complexType>
+            <xs:sequence>
+                <!-- Cabeçalho com identificação do hospital e período de referência -->
+                <xs:element name="Cabecalho">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="HospitalID" type="xs:string"/>
+                            <xs:element name="HospitalNome" type="xs:string"/>
+                            <xs:element name="PeriodoReferencia">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="Mes" type="xs:positiveInteger">
+                                            <xs:annotation>
+                                                <xs:documentation>Mês (1-12)</xs:documentation>
+                                            </xs:annotation>
+                                        </xs:element>
+                                        <xs:element name="Ano" type="xs:positiveInteger">
+                                            <xs:annotation>
+                                                <xs:documentation>Ano (ex: 2025)</xs:documentation>
+                                            </xs:annotation>
+                                        </xs:element>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+
+                <!-- Lista de Especialidades com dados de consulta -->
+                <xs:element name="Especialidades">
+                    <xs:complexType>
+                        <xs:sequence>
+                            <xs:element name="Especialidade" maxOccurs="unbounded">
+                                <xs:complexType>
+                                    <xs:sequence>
+                                        <xs:element name="NomeEspecialidade" type="xs:string"/>
+                                        
+                                        <xs:element name="PopulacaoAlvo">
+                                            <xs:simpleType>
+                                                <xs:restriction base="xs:string">
+                                                    <xs:enumeration value="Adulto"/>
+                                                    <xs:enumeration value="Criança"/>
+                                                    <xs:enumeration value="Ambos"/>
+                                                </xs:restriction>
+                                            </xs:simpleType>
+                                        </xs:element>
+
+                                        <!-- Listas de Espera -->
+                                        <xs:element name="ListasEspera">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="Geral" type="xs:nonNegativeInteger"/>
+                                                    <xs:element name="NaoOncologica" type="xs:nonNegativeInteger"/>
+                                                    <xs:element name="Oncologica" type="xs:nonNegativeInteger"/>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+
+                                        <!-- Tempos Médios de Resposta (em dias) -->
+                                        <xs:element name="TemposMediosResposta">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="Normal" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Tempo em dias</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                    <xs:element name="Prioritario" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Tempo em dias</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                    <xs:element name="MuitoPrioritario" type="xs:nonNegativeInteger">
+                                                        <xs:annotation>
+                                                            <xs:documentation>Tempo em dias</xs:documentation>
+                                                        </xs:annotation>
+                                                    </xs:element>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+
+                                        <!-- Tempos específicos para Oncologia (opcional) -->
+                                        <xs:element name="TemposOncologia" minOccurs="0">
+                                            <xs:complexType>
+                                                <xs:sequence>
+                                                    <xs:element name="Normal" type="xs:nonNegativeInteger"/>
+                                                    <xs:element name="Prioritario" type="xs:nonNegativeInteger"/>
+                                                    <xs:element name="MuitoPrioritario" type="xs:nonNegativeInteger"/>
+                                                </xs:sequence>
+                                            </xs:complexType>
+                                        </xs:element>
+                                    </xs:sequence>
+                                </xs:complexType>
+                            </xs:element>
+                        </xs:sequence>
+                    </xs:complexType>
+                </xs:element>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+</xs:schema>
