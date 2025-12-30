@@ -122,4 +122,47 @@ router.get('/urgencia/media-espera', async (req, res) => {
     }
 });
 
+/**
+ * 9. Estatísticas de erros de integração
+ * GET /api/relatorios/estatisticas-erros
+ */
+router.get('/estatisticas-erros', async (req, res) => {
+    try {
+        const ErroIntegracao = require('../../consultas_agregacao/models/ErroIntegracao');
+
+        const stats = await ErroIntegracao.aggregate([
+            {
+                $group: {
+                    _id: '$tipo',
+                    total: { $sum: 1 },
+                    naoResolvidos: { 
+                        $sum: { $cond: [{ $eq: ['$resolvido', false] }, 1, 0] }
+                    },
+                    resolvidos: { 
+                        $sum: { $cond: [{ $eq: ['$resolvido', true] }, 1, 0] }
+                    }
+                }
+            },
+            {
+                $sort: { total: -1 }
+            }
+        ]);
+
+        const totalGeral = await ErroIntegracao.countDocuments();
+        const naoResolvidosGeral = await ErroIntegracao.countDocuments({ resolvido: false });
+
+        res.json({
+            sucesso: true,
+            totalErros: totalGeral,
+            errosNaoResolvidos: naoResolvidosGeral,
+            porTipo: stats
+        });
+    } catch (error) {
+        res.status(500).json({ 
+            sucesso: false,
+            erro: error.message 
+        });
+    }
+});
+
 module.exports = router;
