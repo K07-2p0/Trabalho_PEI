@@ -1,13 +1,38 @@
 const mongoose = require('mongoose');
 
 const HospitalSchema = new mongoose.Schema({
-    codigo: { type: String, required: true }, // Removi o unique para facilitar a carga inicial
-    instituicao: String,
-    regiao: String,
-    concelho: String,
-    morada: String
+  HospitalKey: {
+    type: Number,
+    required: true,
+    unique: true
+  },
+  HospitalID: {
+    type: String,
+    required: true,
+    unique: true
+  },
+  HospitalName: {
+    type: String,
+    required: true
+  },
+  Description: String,
+  Address: String,
+  District: String,
+  Latitude: Number,
+  Longitude: Number,
+  NUTSIDescription: String,
+  NUTSIIDescription: String,
+  NUTSIIIDescription: String,
+  PhoneNum: String,
+  Email: String
 }, { 
-    collection: 'Hospitais' // ISTO GARANTE QUE USA A TUA COLEÇÃO EXISTENTE
+  collection: 'Hospitais',
+  timestamps: true 
 });
+
+// Índices para otimizar consultas
+HospitalSchema.index({ HospitalID: 1 });
+HospitalSchema.index({ HospitalName: 1 });
+HospitalSchema.index({ District: 1 });
 
 module.exports = mongoose.model('Hospital', HospitalSchema);

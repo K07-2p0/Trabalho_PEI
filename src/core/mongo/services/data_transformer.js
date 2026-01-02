@@ -1,5 +1,4 @@
 const xml2js = require('xml2js');
-const mongoose = require('mongoose');
 
 const parser = new xml2js.Parser({ 
     explicitArray: false,
@@ -7,51 +6,75 @@ const parser = new xml2js.Parser({
     valueProcessors: [xml2js.processors.parseNumbers]
 });
 
+// Mapeamento de meses em português para números
+const mesesPortugues = {
+    'Janeiro': 'Janeiro',
+    'Fevereiro': 'Fevereiro',
+    'Março': 'Março',
+    'Abril': 'Abril',
+    'Maio': 'Maio',
+    'Junho': 'Junho',
+    'Julho': 'Julho',
+    'Agosto': 'Agosto',
+    'Setembro': 'Setembro',
+    'Outubro': 'Outubro',
+    'Novembro': 'Novembro',
+    'Dezembro': 'Dezembro'
+};
+
+// Mapeamento de cores de triagem para nomes
+const coresTriagem = {
+    'Vermelho': 'Red',
+    'Laranja': 'Orange',
+    'Amarelo': 'Yellow',
+    'Verde': 'Green',
+    'Azul': 'Blue'
+};
+
 /**
- * Transforma XML de Urgência em Objeto MongoDB
+ * Transforma XML de Urgência em formato TemposEsperaEmergencia
  */
 const transformUrgencia = async (xmlString) => {
     try {
         const result = await parser.parseStringPromise(xmlString);
         const dados = result.ReportUrgencia;
         
-        // Validação de dados obrigatórios
         if (!dados.Cabecalho || !dados.Cabecalho.HospitalID) {
             throw new Error('HospitalID ausente no cabeçalho');
         }
 
-        // Processa utentes em espera
-        const processarEspera = (espera) => {
-            if (!espera || !espera.Item) return [];
-            const items = Array.isArray(espera.Item) ? espera.Item : [espera.Item];
-            return items.map(item => ({
-                triagem: item.CorTriagem || 'Desconhecida',
-                numeroUtentes: parseInt(item.NumeroUtentes) || 0,
-                tempoMedioEspera: parseInt(item.TempoEspera) || 0
-            }));
-        };
+        const processarTriagem = (espera) => {
+            const triageData = {
+                Red: { Time: 0, Length: 0 },
+                Orange: { Time: 0, Length: 0 },
+                Yellow: { Time: 0, Length: 0 },
+                Green: { Time: 0, Length: 0 },
+                Blue: { Time: 0, Length: 0 }
+            };
 
-        // Processa utentes em observação
-        const processarObservacao = (observacao) => {
-            if (!observacao || !observacao.Item) return [];
-            const items = Array.isArray(observacao.Item) ? observacao.Item : [observacao.Item];
-            return items.map(item => ({
-                triagem: item.CorTriagem || 'Desconhecida',
-                numeroUtentes: parseInt(item.NumeroUtentes) || 0
-            }));
+            if (espera && espera.Item) {
+                const items = Array.isArray(espera.Item) ? espera.Item : [espera.Item];
+                items.forEach(item => {
+                    const corTraduzida = coresTriagem[item.CorTriagem] || item.CorTriagem;
+                    if (triageData[corTraduzida]) {
+                        triageData[corTraduzida].Time = parseInt(item.TempoEspera) || 0;
+                        triageData[corTraduzida].Length = parseInt(item.NumeroUtentes) || 0;
+                    }
+                });
+            }
+
+            return triageData;
         };
 
         return {
-            hospitalId: dados.Cabecalho.HospitalID.trim(),
-            dataRegisto: new Date(dados.Cabecalho.DataHora),
-            tipo: 'urgencia',
-            tipologia: dados.Tipologia || 'Geral',
-            morada: dados.Morada || '',
-            estado: dados.EstadoServico || 'Desconhecido',
-            utentesEspera: processarEspera(dados.Espera),
-            utentesObservacao: processarObservacao(dados.Observacao),
-            dataIntegracao: new Date(),
-            fonteOriginal: 'XML'
+            LastUpdate: new Date(dados.Cabecalho.DataHora),
+            extractionDate: new Date(),
+            institutionId: dados.Cabecalho.HospitalID.trim(),
+            EmergencyType: {
+                Code: dados.Tipologia || 'Geral',
+                Description: dados.EstadoServico || 'Desconhecido'
+            },
+            Triage: processarTriagem(dados.Espera)
         };
     } catch (error) {
         throw new Error(`Erro na transformação de Urgência: ${error.message}`);
@@ -59,7 +82,7 @@ const transformUrgencia = async (xmlString) => {
 };
 
 /**
- * Transforma XML de Consultas em Objeto MongoDB
+ * Transforma XML de Consultas em formato TemposEsperaConsultaCirurgia
  */
 const transformConsulta = async (xmlString) => {
     try {
@@ -70,56 +93,66 @@ const transformConsulta = async (xmlString) => {
             throw new Error('HospitalID ausente no cabeçalho');
         }
 
-        // Processa especialidades
-        const processarEspecialidades = (lista) => {
-            if (!lista || !lista.Especialidade) return [];
-            const specs = Array.isArray(lista.Especialidade) 
-                ? lista.Especialidade 
-                : [lista.Especialidade];
-            
-            return specs.map(esp => ({
-                nome: esp.Nome || 'Desconhecida',
-                populacaoAlvo: esp.PopulacaoAlvo || 'Ambos',
-                tipoLista: esp.TipoLista || 'Geral',
-                temposResposta: {
-                    muitoPrioritario: parseInt(esp.TempoMuitoPrioritario) || 0,
-                    prioritario: parseInt(esp.TempoPrioritario) || 0,
-                    normal: parseInt(esp.TempoNormal) || 0
-                },
-                numeroUtentesEspera: parseInt(esp.NumeroUtentes) || 0
-            }));
-        };
-
-        // Extrai mês e ano do período (ex: "2025-01" ou "Janeiro/2025")
         const parsePeriodo = (periodoStr) => {
             const match = periodoStr.match(/(\d{4})-(\d{2})/);
             if (match) {
+                const ano = parseInt(match[1]);
+                const mesNum = parseInt(match[2]);
+                const mesesArray = Object.keys(mesesPortugues);
                 return {
-                    ano: parseInt(match[1]),
-                    mes: parseInt(match[2])
+                    ano: ano,
+                    mes: mesesArray[mesNum - 1]
                 };
             }
-            return { ano: new Date().getFullYear(), mes: new Date().getMonth() + 1 };
+            return { ano: new Date().getFullYear(), mes: 'Janeiro' };
         };
 
         const periodo = parsePeriodo(dados.Cabecalho.Periodo);
+        const documentos = [];
 
-        return {
-            hospitalId: dados.Cabecalho.HospitalID.trim(),
-            tipo: 'consulta',
-            mesReferencia: periodo.mes,
-            anoReferencia: periodo.ano,
-            especialidades: processarEspecialidades(dados.ListaEspecialidades),
-            dataIntegracao: new Date(),
-            fonteOriginal: 'XML'
-        };
+        // Processar especialidades
+        if (dados.ListaEspecialidades && dados.ListaEspecialidades.Especialidade) {
+            const especialidades = Array.isArray(dados.ListaEspecialidades.Especialidade) 
+                ? dados.ListaEspecialidades.Especialidade 
+                : [dados.ListaEspecialidades.Especialidade];
+            
+            especialidades.forEach(esp => {
+                // Criar documento para cada tempo de resposta
+                const temposResposta = [
+                    { prioridade: 'MuitoPrioritario', tempo: esp.TempoMuitoPrioritario },
+                    { prioridade: 'Prioritario', tempo: esp.TempoPrioritario },
+                    { prioridade: 'Normal', tempo: esp.TempoNormal }
+                ];
+
+                temposResposta.forEach(tr => {
+                    if (tr.tempo) {
+                        documentos.push({
+                            HospitalName: dados.Cabecalho.HospitalID.trim(), // Será substituído pelo nome real
+                            ServiceKey: 0, // Será calculado baseado na especialidade + prioridade
+                            AverageWaitingTime_Speciality_Priority_Institution: parseInt(tr.tempo) || 0,
+                            MonthPortuguese: periodo.mes,
+                            Year: periodo.ano,
+                            NumberOfPeople: parseInt(esp.NumeroUtentes) || 0,
+                            _metadata: {
+                                especialidade: esp.Nome,
+                                prioridade: tr.prioridade,
+                                tipoLista: esp.TipoLista,
+                                populacaoAlvo: esp.PopulacaoAlvo
+                            }
+                        });
+                    }
+                });
+            });
+        }
+
+        return documentos;
     } catch (error) {
         throw new Error(`Erro na transformação de Consultas: ${error.message}`);
     }
 };
 
 /**
- * Transforma XML de Cirurgias em Objeto MongoDB
+ * Transforma XML de Cirurgias em formato TemposEsperaConsultaCirurgia
  */
 const transformCirurgia = async (xmlString) => {
     try {
@@ -130,44 +163,47 @@ const transformCirurgia = async (xmlString) => {
             throw new Error('HospitalID ausente no cabeçalho');
         }
 
-        // Processa especialidades cirúrgicas
-        const processarCirurgias = (lista) => {
-            if (!lista || !lista.Especialidade) return [];
-            const specs = Array.isArray(lista.Especialidade) 
-                ? lista.Especialidade 
-                : [lista.Especialidade];
-            
-            return specs.map(esp => ({
-                especialidade: esp.Nome || 'Desconhecida',
-                tipoLista: esp.TipoLista || 'Geral',
-                tempoMedioEspera: parseFloat(esp.TempoEspera) || 0,
-                numeroCirurgias: parseInt(esp.NumeroCirurgias) || 0,
-                numeroUtentesEspera: parseInt(esp.NumeroUtentes) || 0
-            }));
-        };
-
         const parsePeriodo = (periodoStr) => {
             const match = periodoStr.match(/(\d{4})-(\d{2})/);
             if (match) {
+                const ano = parseInt(match[1]);
+                const mesNum = parseInt(match[2]);
+                const mesesArray = Object.keys(mesesPortugues);
                 return {
-                    ano: parseInt(match[1]),
-                    mes: parseInt(match[2])
+                    ano: ano,
+                    mes: mesesArray[mesNum - 1]
                 };
             }
-            return { ano: new Date().getFullYear(), mes: new Date().getMonth() + 1 };
+            return { ano: new Date().getFullYear(), mes: 'Janeiro' };
         };
 
         const periodo = parsePeriodo(dados.Cabecalho.Periodo);
+        const documentos = [];
 
-        return {
-            hospitalId: dados.Cabecalho.HospitalID.trim(),
-            tipo: 'cirurgia',
-            mesReferencia: periodo.mes,
-            anoReferencia: periodo.ano,
-            especialidades: processarCirurgias(dados.ListaEspecialidades),
-            dataIntegracao: new Date(),
-            fonteOriginal: 'XML'
-        };
+        // Processar especialidades
+        if (dados.ListaEspecialidades && dados.ListaEspecialidades.Especialidade) {
+            const especialidades = Array.isArray(dados.ListaEspecialidades.Especialidade) 
+                ? dados.ListaEspecialidades.Especialidade 
+                : [dados.ListaEspecialidades.Especialidade];
+            
+            especialidades.forEach(esp => {
+                documentos.push({
+                    HospitalName: dados.Cabecalho.HospitalID.trim(), // Será substituído pelo nome real
+                    ServiceKey: 0, // Será calculado baseado na especialidade
+                    AverageWaitingTime_Speciality_Priority_Institution: parseFloat(esp.TempoEspera) || 0,
+                    MonthPortuguese: periodo.mes,
+                    Year: periodo.ano,
+                    NumberOfPeople: parseInt(esp.NumeroUtentes) || 0,
+                    _metadata: {
+                        especialidade: esp.Nome,
+                        tipoLista: esp.TipoLista,
+                        numeroCirurgias: esp.NumeroCirurgias
+                    }
+                });
+            });
+        }
+
+        return documentos;
     } catch (error) {
         throw new Error(`Erro na transformação de Cirurgias: ${error.message}`);
     }
