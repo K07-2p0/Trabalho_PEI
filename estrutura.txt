@@ -1,51 +1,49 @@
-.
-└── Trabalho_PEI/  (Diretório Raiz - Nome do Projeto)
-    
-    ├── DOCUMENTACAO/
-    │   └── Relatorio_PEI.pdf             # Relatório obrigatório com a justificação da modelação MongoDB, contextualização e apreciação crítica.
-    │
-    ├── DADOS_VOCABULARIO/
-    │   ├── XSD/
-    │   │   └── HealthTime_Vocabulario.xsd # Vocabulário XSD para validação dos ficheiros XML.
-    │   │
-    │   ├── XML/             # Exemplos dos três tipos de documentos XML desenvolvidos:
-    │   │   ├── Urgencia_HospitalX_...xml
-    │   │   ├── Consultas_HospitalY_...xml
-    │   │   └── Cirurgias_HospitalZ_...xml
-    │   │
-    │   └── DADOS_PEI/             # Dados históricos fornecidos em CSV para integração inicial:
-    │       ├── Hospitais.csv
-    │       ├── Servicos.csv
-    │       ├── TemposEsperaConsultaCirurgia.csv
-    │       └── TemposEsperaEmergencia.csv
-    │
-    └── CODIGO_FONTE/
-        ├── API_REST/                   # Implementação da API REST (Consumo XML e Disponibilização JSON) 
-        │   ├── server.js / server.py      # Ficheiro principal do servidor/API
-        │   └── routes/
-        │       ├── submissao.js           # Lógica para os endpoints POST (/submissao/...)
-        │       └── relatorios.js          # Lógica para os endpoints GET (/relatorios/...)
-        │
-        ├── INTEGRACAO_MONGO/           # Scripts e lógica para a Pipeline de Integração 
-        │   ├── db/
-        │   │   └── connection.js          # Configuração da conexão e MongoDB
-        │   │
-        │   ├── scripts_carga/
-        │   │   └── load_csv.js            # Script de integração dos CSV históricos 
-        │   │
-        │   └── services/
-        │       ├── xml_validator.js       # Módulo para validação XSD
-        │       └── data_transformer.js    # Módulo de transformação XML -> JSON/Documento MongoDB
-        │
-        └── CONSULTAS_AGREGACAO/        # Ficheiros com as Aggregation Pipelines para os relatórios analíticos 
-            ├── pipelines/
-            │   ├── media_espera_urgencia.js
-            │   ├── top10_pediatrico.js
-            │   ├── diferenca_oncologia.js
-            │   └── ... (Um ficheiro/consulta para cada questão analítica)
-            │
-            └── models/                    # Definição do modelo de dados (schemas das coleções)
-                ├── Hospital.js
-                ├── Urgencia.js
-                ├── Consulta.js
-                └── Cirurgia.js
+Trabalho_PEI/ (branch: preplexity)
+│
+├── 📁 schemas/
+│   ├── urgencia.xsd
+│   ├── consulta.xsd
+│   └── cirurgia.xsd
+│
+├── 📁 exemplos_xml/
+│   ├── urgencia_exemplo.xml
+│   ├── consulta_exemplo.xml
+│   └── cirurgia_exemplo.xml
+│
+├── 📁 dados_vocabulario/
+│   └── [ficheiros CSV de dados históricos]
+│
+├── 📁 src/
+│   └── 📁 core/
+│       ├── 📁 api_rest/
+│       │   ├── server.js
+│       │   └── 📁 routes/
+│       │       ├── submissao.js          # Rotas para submissão XML
+│       │       └── relatorios.js         # Rotas para queries analíticas
+│       │
+│       ├── 📁 consultas_agregacao/
+│       │   ├── 📁 models/
+│       │   │   └── [modelos de dados]
+│       │   └── 📁 pipelines/
+│       │       └── [pipelines de agregação MongoDB]
+│       │
+│       └── 📁 mongo/
+│           ├── 📁 db/
+│           │   └── [configuração base de dados]
+│           ├── 📁 scripts_carga/
+│           │   └── load_csv.js          # Script para carregar CSVs
+│           └── 📁 services/
+│               └── [serviços MongoDB]
+│
+├── 📁 node_modules/                     
+│   └── [dependências npm]
+│
+├── 📄 .DS_Store                       
+├── 📄 .env                              
+├── 📄 CHANGELOG_VALIDACAO.md
+├── 📄 estrutura.txt
+├── 📄 package-lock.json
+├── 📄 package.json
+├── 📄 README.md
+├── 📄 TESTES_API.md
+└── 📄 test_validation.js

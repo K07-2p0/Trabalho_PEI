@@ -1,168 +1,203 @@
 const express = require('express');
 const router = express.Router();
 
-// Importação das pipelines da pasta pipelines
-const getMediaEsperaUrgencia = require('../../consultas_agregacao/pipelines/media_espera_urgencia');
-const getMediaEsperaPediatriaRegiao = require('../../consultas_agregacao/pipelines/media_espera_pediatria_regiao');
-const getDiferencaTemposResposta = require('../../consultas_agregacao/pipelines/diferenca_tempos_resposta');
-const getTempoCirurgiaProgramada = require('../../consultas_agregacao/pipelines/tempo_cirurgia_programada');
-const getDiscrepanciaTemposCirurgiaConsultas = require('../../consultas_agregacao/pipelines/discrepancia_tempos_cirurgiaConsultas');
-const getTop10Hospitais = require('../../consultas_agregacao/pipelines/top_10_hospitais');
-const getEvolucaoTemporal = require('../../consultas_agregacao/pipelines/evolucao_temporal');
-const getPercentagemTriagemHospital = require('../../consultas_agregacao/pipelines/percentagem_triagem_hospital');
+// Importar as FUNÇÕES das pipelines (NOMES CORRETOS do GitHub)
+const { getMediaEsperaUrgencia } = require('../../consultas_agregacao/pipelines/media_espera_urgencia');
+const { getPercentagemTriagem } = require('../../consultas_agregacao/pipelines/percentagem_triagem_hospital');
+const { getTempoMedioPediatricas } = require('../../consultas_agregacao/pipelines/media_espera_pediatria_regiao');
+const { getDiferencaOncologia } = require('../../consultas_agregacao/pipelines/diferenca_tempos_resposta');
+const { getTempoMedioCirurgia } = require('../../consultas_agregacao/pipelines/tempo_cirurgia_programada');
+const { getDiscrepanciaConsultaCirurgia } = require('../../consultas_agregacao/pipelines/discrepancia_tempos_cirurgiaConsultas');
+const { getTopHospitaisPediatria } = require('../../consultas_agregacao/pipelines/top_10_hospitais');
+const { getEvolucaoTemporal } = require('../../consultas_agregacao/pipelines/evolucao_temporal');
 
-/**
- * 1. Tempo médio de espera nas urgências pediátricas por região
- * GET /api/relatorios/urgencia/pediatria/regiao?inicio=...&fim=...
- */
-router.get('/urgencia/pediatria/regiao', async (req, res) => {
+// ============================================
+// QUERY 1: Média de utentes em espera por tipologia
+// ============================================
+router.get('/media-espera-urgencia', async (req, res) => {
     try {
-        const { inicio, fim } = req.query;
-        const resultado = await getMediaEsperaPediatriaRegiao(inicio, fim);
+        const { dataInicio, dataFim, tipologia } = req.query;
+        
+        if (!dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                erro: 'Parâmetros dataInicio e dataFim são obrigatórios' 
+            });
+        }
+        
+        const resultado = await getMediaEsperaUrgencia(dataInicio, dataFim, tipologia);
         res.json(resultado);
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
+    } catch (erro) {
+        res.status(500).json({ erro: erro.message });
     }
 });
 
-/**
- * 2. Diferença tempos médios consultas oncologia vs não-oncologia
- * GET /api/relatorios/consultas/diferenca-oncologia?especialidade=...&inicio=...&fim=...
- */
-router.get('/consultas/diferenca-oncologia', async (req, res) => {
+// ============================================
+// QUERY 2: Percentagem por categoria de triagem
+// ============================================
+router.get('/percentagem-triagem', async (req, res) => {
     try {
-        const { especialidade, inicio, fim } = req.query;
-        const resultado = await getDiferencaTemposResposta(especialidade, inicio, fim);
+        const { hospitalId, dataInicio, dataFim, periodo } = req.query;
+        
+        if (!hospitalId || !dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                erro: 'Parâmetros hospitalId, dataInicio e dataFim são obrigatórios' 
+            });
+        }
+        
+        const resultado = await getPercentagemTriagem(hospitalId, dataInicio, dataFim, periodo);
         res.json(resultado);
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
+    } catch (erro) {
+        res.status(500).json({ erro: erro.message });
     }
 });
 
-/**
- * 3. Tempo médio cirurgia programada (Geral vs Oncológica)
- * GET /api/relatorios/cirurgia/tempo-medio?mes=...&ano=...
- */
-router.get('/cirurgia/tempo-medio', async (req, res) => {
+// ============================================
+// QUERY 3: Tempo médio de espera - urgências pediátricas por região
+// ============================================
+router.get('/tempo-medio-pediatricas', async (req, res) => {
     try {
-        const { mes, ano } = req.query;
-        const resultado = await getTempoCirurgiaProgramada(parseInt(mes), parseInt(ano));
+        const { dataInicio, dataFim, regiao } = req.query;
+        
+        if (!dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                erro: 'Parâmetros dataInicio e dataFim são obrigatórios' 
+            });
+        }
+        
+        const resultado = await getTempoMedioPediatricas(dataInicio, dataFim, regiao);
         res.json(resultado);
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
+    } catch (erro) {
+        res.status(500).json({ erro: erro.message });
     }
 });
 
-/**
- * 4. Discrepância tempos de resposta Consultas vs Cirurgias
- * GET /api/relatorios/discrepancia?granularidade=dia&inicio=...&fim=...
- */
-router.get('/discrepancia', async (req, res) => {
+// ============================================
+// QUERY 4: Diferença oncologia vs. não-oncologia
+// ============================================
+router.get('/diferenca-oncologia', async (req, res) => {
     try {
-        const { granularidade, inicio, fim } = req.query;
-        const resultado = await getDiscrepanciaTemposCirurgiaConsultas(granularidade, inicio, fim);
+        const { especialidade, hospitalId, dataInicio, dataFim } = req.query;
+        
+        if (!especialidade || !dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                erro: 'Parâmetros especialidade, dataInicio e dataFim são obrigatórios' 
+            });
+        }
+        
+        const resultado = await getDiferencaOncologia(especialidade, hospitalId, dataInicio, dataFim);
         res.json(resultado);
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
+    } catch (erro) {
+        res.status(500).json({ erro: erro.message });
     }
 });
 
-/**
- * 5. Top 10 Hospitais com menores tempos em pediatria
- * GET /api/relatorios/rankings/top-10-pediatria?inicio=...&fim=...
- */
-router.get('/rankings/top-10-pediatria', async (req, res) => {
+// ============================================
+// QUERY 5: Tempo médio de espera para cirurgia programada
+// ============================================
+router.get('/tempo-medio-cirurgia', async (req, res) => {
     try {
-        const { inicio, fim } = req.query;
-        const resultado = await getTop10Hospitais(inicio, fim);
+        const { especialidade, dataInicio, dataFim } = req.query;
+        
+        if (!especialidade || !dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                erro: 'Parâmetros especialidade, dataInicio e dataFim são obrigatórios' 
+            });
+        }
+        
+        const resultado = await getTempoMedioCirurgia(especialidade, dataInicio, dataFim);
         res.json(resultado);
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
+    } catch (erro) {
+        res.status(500).json({ erro: erro.message });
     }
 });
 
-/**
- * 6. Evolução temporal (15 em 15 min) e picos de afluência
- * GET /api/relatorios/urgencia/evolucao?data=YYYY-MM-DD
- */
-router.get('/urgencia/evolucao', async (req, res) => {
+// ============================================
+// QUERY 6: Discrepância consultas vs. cirurgias
+// ============================================
+router.get('/discrepancia-consulta-cirurgia', async (req, res) => {
     try {
-        const { data } = req.query;
-        const resultado = await getEvolucaoTemporal(data);
+        const { hospitalId, especialidade, dataInicio, dataFim, agregacao } = req.query;
+        
+        if (!hospitalId || !especialidade || !dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                erro: 'Parâmetros hospitalId, especialidade, dataInicio e dataFim são obrigatórios' 
+            });
+        }
+        
+        const resultado = await getDiscrepanciaConsultaCirurgia(
+            hospitalId, 
+            especialidade, 
+            dataInicio, 
+            dataFim, 
+            agregacao || 'dia'
+        );
         res.json(resultado);
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
+    } catch (erro) {
+        res.status(500).json({ erro: erro.message });
     }
 });
 
-/**
- * 7. Percentagem de triagem por hospital
- * GET /api/relatorios/urgencia/percentagem-triagem?hospital_id=...
- */
-router.get('/urgencia/percentagem-triagem', async (req, res) => {
+// ============================================
+// QUERY 7: Top 10 hospitais - urgências pediátricas
+// ============================================
+router.get('/top-hospitais-pediatria', async (req, res) => {
     try {
-        const { hospital_id } = req.query;
-        const resultado = await getPercentagemTriagemHospital(hospital_id);
+        const { dataInicio, dataFim, limite } = req.query;
+        
+        if (!dataInicio || !dataFim) {
+            return res.status(400).json({ 
+                erro: 'Parâmetros dataInicio e dataFim são obrigatórios' 
+            });
+        }
+        
+        const resultado = await getTopHospitaisPediatria(
+            dataInicio, 
+            dataFim, 
+            parseInt(limite) || 10
+        );
         res.json(resultado);
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
+    } catch (erro) {
+        res.status(500).json({ erro: erro.message });
     }
 });
 
-/**
- * 8. Média geral de espera nas urgências
- */
-router.get('/urgencia/media-espera', async (req, res) => {
+// ============================================
+// QUERY 8: Evolução temporal (picos de afluência)
+// ============================================
+router.get('/evolucao-temporal', async (req, res) => {
     try {
-        const { inicio, fim } = req.query;
-        const resultado = await getMediaEsperaUrgencia(inicio, fim);
+        const { data, hospitalId } = req.query;
+        
+        if (!data) {
+            return res.status(400).json({ 
+                erro: 'Parâmetro data é obrigatório (formato: YYYY-MM-DD)' 
+            });
+        }
+        
+        const resultado = await getEvolucaoTemporal(data, hospitalId);
         res.json(resultado);
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
+    } catch (erro) {
+        res.status(500).json({ erro: erro.message });
     }
 });
 
-/**
- * 9. Estatísticas de erros de integração
- * GET /api/relatorios/estatisticas-erros
- */
-router.get('/estatisticas-erros', async (req, res) => {
-    try {
-        const ErroIntegracao = require('../../consultas_agregacao/models/ErroIntegracao');
-
-        const stats = await ErroIntegracao.aggregate([
-            {
-                $group: {
-                    _id: '$tipo',
-                    total: { $sum: 1 },
-                    naoResolvidos: { 
-                        $sum: { $cond: [{ $eq: ['$resolvido', false] }, 1, 0] }
-                    },
-                    resolvidos: { 
-                        $sum: { $cond: [{ $eq: ['$resolvido', true] }, 1, 0] }
-                    }
-                }
-            },
-            {
-                $sort: { total: -1 }
-            }
-        ]);
-
-        const totalGeral = await ErroIntegracao.countDocuments();
-        const naoResolvidosGeral = await ErroIntegracao.countDocuments({ resolvido: false });
-
-        res.json({
-            sucesso: true,
-            totalErros: totalGeral,
-            errosNaoResolvidos: naoResolvidosGeral,
-            porTipo: stats
-        });
-    } catch (error) {
-        res.status(500).json({ 
-            sucesso: false,
-            erro: error.message 
-        });
-    }
+// ============================================
+// Endpoint de teste
+// ============================================
+router.get('/teste', (req, res) => {
+    res.json({ 
+        mensagem: 'API de Relatórios funcionando!',
+        endpoints_disponiveis: [
+            'GET /relatorios/media-espera-urgencia',
+            'GET /relatorios/percentagem-triagem',
+            'GET /relatorios/tempo-medio-pediatricas',
+            'GET /relatorios/diferenca-oncologia',
+            'GET /relatorios/tempo-medio-cirurgia',
+            'GET /relatorios/discrepancia-consulta-cirurgia',
+            'GET /relatorios/top-hospitais-pediatria',
+            'GET /relatorios/evolucao-temporal'
+        ]
+    });
 });
 
 module.exports = router;

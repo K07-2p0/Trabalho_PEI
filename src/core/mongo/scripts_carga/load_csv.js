@@ -169,7 +169,6 @@ const loadUrgencias = () => {
         fs.createReadStream(fullPath)
             .pipe(csv())
             .on('data', (row) => {
-                // Usa os nomes corretos das colunas do CSV
                 const lastUpdateDate = new Date(row.LastUpdate);
                 const extractionDate = new Date(row.extractionDate);
                 
@@ -179,21 +178,35 @@ const loadUrgencias = () => {
                 }
 
                 results.push({
-                    Date: lastUpdateDate,
-                    Hour: lastUpdateDate.toISOString().split('T')[1].split('.')[0], // Extrai hora de LastUpdate
-                    HospitalID: row.institutionId,
-                    EmergencyType: row['EmergencyType.Code'],
-                    EmergencyTypeDesc: row['EmergencyType.Description'],
-                    Queue1: parseInt(row['Triage.Red.Time']) || 0,
-                    WaitingQueue1: parseInt(row['Triage.Red.Length']) || 0,
-                    Queue2: parseInt(row['Triage.Orange.Time']) || 0,
-                    WaitingQueue2: parseInt(row['Triage.Orange.Length']) || 0,
-                    Queue3: parseInt(row['Triage.Yellow.Time']) || 0,
-                    WaitingQueue3: parseInt(row['Triage.Yellow.Length']) || 0,
-                    Queue4: parseInt(row['Triage.Green.Time']) || 0,
-                    WaitingQueue4: parseInt(row['Triage.Green.Length']) || 0,
-                    Queue5: parseInt(row['Triage.Blue.Time']) || 0,
-                    WaitingQueue5: parseInt(row['Triage.Blue.Length']) || 0
+                    LastUpdate: lastUpdateDate,
+                    extractionDate: extractionDate,
+                    institutionId: row.institutionId,
+                    EmergencyType: {
+                        Code: row['EmergencyType.Code'] || null,
+                        Description: row['EmergencyType.Description'] || null
+                    },
+                    Triage: {
+                        Red: {
+                            Time: parseInt(row['Triage.Red.Time']) || 0,
+                            Length: parseInt(row['Triage.Red.Length']) || 0
+                        },
+                        Orange: {
+                            Time: parseInt(row['Triage.Orange.Time']) || 0,
+                            Length: parseInt(row['Triage.Orange.Length']) || 0
+                        },
+                        Yellow: {
+                            Time: parseInt(row['Triage.Yellow.Time']) || 0,
+                            Length: parseInt(row['Triage.Yellow.Length']) || 0
+                        },
+                        Green: {
+                            Time: parseInt(row['Triage.Green.Time']) || 0,
+                            Length: parseInt(row['Triage.Green.Length']) || 0
+                        },
+                        Blue: {
+                            Time: parseInt(row['Triage.Blue.Time']) || 0,
+                            Length: parseInt(row['Triage.Blue.Length']) || 0
+                        }
+                    }
                 });
             })
             .on('end', async () => {
@@ -217,6 +230,7 @@ const loadUrgencias = () => {
             });
     });
 };
+
 
 
 const loadConsultasCirurgias = () => {
