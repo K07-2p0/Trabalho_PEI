@@ -46,9 +46,11 @@ const loadHospitais = () => {
         console.log(`>>> [1/4] A carregar Hospitais de: ${fullPath}`);
 
         fs.createReadStream(fullPath)
-            .pipe(csv()) // Lê os headers automaticamente do CSV
+            .pipe(csv())
             .on('data', (row) => {
-                // Os dados já vêm com os headers corretos do CSV
+                // Validação: Só adiciona se HospitalID estiver presente
+                if (!row.HospitalID || row.HospitalID.trim() === '') return;
+                
                 results.push({
                     HospitalKey: parseInt(row.HospitalKey) || null,
                     HospitalID: row.HospitalID || '',
@@ -71,6 +73,8 @@ const loadHospitais = () => {
                     if (results.length > 0) {
                         await Hospital.insertMany(results);
                         console.log(`    ✓ ${results.length} hospitais inseridos.\n`);
+                    } else {
+                        console.log(`    ⚠ Nenhum hospital válido encontrado.\n`);
                     }
                     resolve();
                 } catch (err) {
@@ -95,13 +99,19 @@ const loadServicos = () => {
         fs.createReadStream(fullPath)
             .pipe(csv())
             .on('data', (row) => {
+                // Validação: ServiceKey é obrigatório e deve ser um número válido
+                const serviceKey = parseInt(row.ServiceKey);
+                if (!serviceKey || isNaN(serviceKey)) {
+                    return; // Ignora linhas sem ServiceKey válido
+                }
+                
                 results.push({
-                    ServiceKey: parseInt(row.ServiceKey) || null,
+                    ServiceKey: serviceKey,
                     Speciality: row.Speciality || null,
-                    Population: parseInt(row.Population) || null,
-                    PopulationDescription: row.PopulationDescription || null,
-                    SpecialityDescription: row.SpecialityDescription || null,
-                    ServiceType: row.ServiceType || null
+                    PriorityCode: row.PriorityCode || null,
+                    PriorityDescription: row.PriorityDescription || null,
+                    TypeCode: row.TypeCode || null,
+                    TypeDescription: row.TypeDescription || null
                 });
             })
             .on('end', async () => {
@@ -110,6 +120,8 @@ const loadServicos = () => {
                     if (results.length > 0) {
                         await Servico.insertMany(results);
                         console.log(`    ✓ ${results.length} serviços inseridos.\n`);
+                    } else {
+                        console.log(`    ⚠ Nenhum serviço válido encontrado.\n`);
                     }
                     resolve();
                 } catch (err) {
@@ -136,8 +148,9 @@ const loadUrgencias = () => {
             .on('data', (row) => {
                 const dataObj = new Date(row.Date);
                 
-                if (isNaN(dataObj.getTime())) {
-                    return; // Ignora linhas com datas inválidas
+                // Validação: Ignora linhas com datas inválidas ou sem HospitalID
+                if (isNaN(dataObj.getTime()) || !row.HospitalID) {
+                    return;
                 }
 
                 results.push({
@@ -164,6 +177,8 @@ const loadUrgencias = () => {
                     if (results.length > 0) {
                         await TemposEsperaEmergencia.insertMany(results);
                         console.log(`    ✓ ${results.length} urgências inseridas.\n`);
+                    } else {
+                        console.log(`    ⚠ Nenhuma urgência válida encontrada.\n`);
                     }
                     resolve();
                 } catch (err) {
@@ -188,6 +203,11 @@ const loadConsultasCirurgias = () => {
         fs.createReadStream(fullPath)
             .pipe(csv())
             .on('data', (row) => {
+                // Validação: pelo menos HospitalName deve existir
+                if (!row.HospitalName || row.HospitalName.trim() === '') {
+                    return;
+                }
+                
                 results.push({
                     HospitalName: row.HospitalName || null,
                     ServiceType: row.ServiceType || null,
@@ -203,6 +223,8 @@ const loadConsultasCirurgias = () => {
                     if (results.length > 0) {
                         await TemposEsperaConsultaCirurgia.insertMany(results);
                         console.log(`    ✓ ${results.length} consultas/cirurgias inseridas.\n`);
+                    } else {
+                        console.log(`    ⚠ Nenhuma consulta/cirurgia válida encontrada.\n`);
                     }
                     resolve();
                 } catch (err) {
