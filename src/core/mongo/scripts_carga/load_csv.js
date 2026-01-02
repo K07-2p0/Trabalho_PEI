@@ -6,6 +6,9 @@ const connectDB = require('../db/connection');
 
 require('dotenv').config({ path: path.join(__dirname, '../../../../.env') });
 
+/**
+ * Função auxiliar para importar modelos dinamicamente do .env
+ */
 const getModelFromEnv = (modelFileName) => {
     const relativeModelPath = process.env.PATH_MODELS;
     const fullPath = path.join(__dirname, '../../../../', relativeModelPath, modelFileName);
@@ -13,185 +16,332 @@ const getModelFromEnv = (modelFileName) => {
         return require(fullPath);
     } catch (error) {
         console.error(`>>> ERRO ao importar modelo de: ${fullPath}`);
+        console.error(error.message);
         process.exit(1);
     }
 };
 
+/**
+ * Função auxiliar para converter valores vazios em null
+ */
+const parseOrNull = (value, type = 'string') => {
+    if (!value || value.trim() === '') return null;
+    
+    switch(type) {
+        case 'number':
+            const num = parseFloat(value);
+            return isNaN(num) ? null : num;
+        case 'int':
+            const int = parseInt(value);
+            return isNaN(int) ? null : int;
+        case 'date':
+            const date = new Date(value);
+            return isNaN(date.getTime()) ? null : date;
+        default:
+            return value.trim();
+    }
+};
+
+/**
+ * Função principal de carga
+ */
 const runLoader = async () => {
     await connectDB();
+    console.log('>>> Conexão com MongoDB estabelecida.\n');
     
+    // Importar modelos
     const HospitalModel = getModelFromEnv('Hospital');
     const ServicoModel = getModelFromEnv('Servico');
-    const UrgenciaModel = getModelFromEnv('Urgencia');
-    const ConsultaCirurgiaModel = getModelFromEnv('ConsultaCirurgia');
+    const TempoEsperaEmergenciaModel = getModelFromEnv('TemposEsperaEmergencia');
+    const TempoEsperaConsultaCirurgiaModel = getModelFromEnv('TemposEsperaConsultaCirurgia');
 
-    // --- CARGA DE URGÊNCIAS (Versão Segura) ---
-    const loadUrgencias = () => {
+    // =================================================================
+    // 1. CARGA DE HOSPITAIS
+    // =================================================================
+    const loadHospitais = () => {
         return new Promise((resolve) => {
             const results = [];
-            const fullPath = path.join(__dirname, '../../../../', process.env.PATH_CSV_ESPERA_URGENCIA);
+            const fullPath = path.join(__dirname, '../../../../', process.env.PATH_CSV_HOSPITAIS);
             
-            console.log(`>>> A carregar Urgências de: ${fullPath}`);
+            console.log(`>>> [1/4] A carregar Hospitais de: ${fullPath}`);
 
             fs.createReadStream(fullPath)
                 .pipe(csv({ 
-                    separator: ',', // Conforme a tua amostra
-                    headers: false  // Lemos por índice 0, 1, 2...
+                    separator: ';',
+                    headers: ['HospitalKey', 'HospitalID', 'HospitalName', 'Description', 'Address', 
+                              'District', 'Latitude', 'Longitude', 'NUTSIDescription', 
+                              'NUTSIIDescription', 'NUTSIIIDescription', 'PhoneNum', 'Email']
                 }))
                 .on('data', (row) => {
-                    // Tenta criar a data a partir da primeira coluna (row[0])
-                    const dataRaw = row[0];
-                    const dataObj = new Date(dataRaw);
+                    // Ignora cabeçalho se existir
+                    if (row.HospitalKey === 'HospitalKey' || !row.HospitalID) return;
 
-                    // SEGURANÇA: Se a data for inválida (ex: cabeçalho ou linha vazia), ignora esta linha
-                    if (isNaN(dataObj.getTime())) {
-                        return; 
-                    }
+                    // Valida se tem pelo menos HospitalID (campo essencial)
+                    const hospitalID = parseOrNull(row.HospitalID);
+                    if (!hospitalID) return; // Linha inválida
 
-                    const common = {
-                        hospital_id: row[2],
-                        data_registo: dataObj,
-                        tipologia: row[4],
-                        estado: 'Aberta'
-                    };
-
-                    // Mapeamento baseado nos índices da tua linha:
-                    // row[7] = Não Urgente, row[9] = Pouco Urgente, row[11] = Urgente, row[13] = Muito Urgente
-                    
-                    if(row[7] !== undefined) results.push({ ...common, triagem: 'Não Urgente', utentes_em_espera: parseInt(row[7]) || 0 });
-                    if(row[9] !== undefined) results.push({ ...common, triagem: 'Pouco Urgente', utentes_em_espera: parseInt(row[9]) || 0 });
-                    if(row[11] !== undefined) results.push({ ...common, triagem: 'Urgente', utentes_em_espera: parseInt(row[11]) || 0 });
-                    if(row[13] !== undefined) results.push({ ...common, triagem: 'Muito Urgente', utentes_em_espera: parseInt(row[13]) || 0 });
+                    results.push({
+                        HospitalKey: parseOrNull(row.HospitalKey, 'int'),
+                        HospitalID: hospitalID,
+                        HospitalName: parseOrNull(row.HospitalName),
+                        Description: parseOrNull(row.Description),
+                        Address: parseOrNull(row.Address),
+                        District: parseOrNull(row.District),
+                        Latitude: parseOrNull(row.Latitude, 'number'),
+                        Longitude: parseOrNull(row.Longitude, 'number'),
+                        NUTSIDescription: parseOrNull(row.NUTSIDescription),
+                        NUTSIIDescription: parseOrNull(row.NUTSIIDescription),
+                        NUTSIIIDescription: parseOrNull(row.NUTSIIIDescription),
+                        PhoneNum: parseOrNull(row.PhoneNum),
+                        Email: parseOrNull(row.Email)
+                    });
                 })
                 .on('end', async () => {
                     try {
                         if (results.length > 0) {
-                            await UrgenciaModel.deleteMany({});
-                            await UrgenciaModel.insertMany(results);
-                            console.log(`>>> [SUCESSO] Urgencia: ${results.length} registos inseridos.`);
+                            await HospitalModel.deleteMany({});
+                            await HospitalModel.insertMany(results);
+                            console.log(`    ✓ ${results.length} hospitais inseridos.\n`);
                         } else {
-                            console.log(">>> [AVISO] Nenhum dado de urgência válido encontrado.");
+                            console.log("    ⚠ Nenhum hospital válido encontrado.\n");
                         }
                         resolve();
                     } catch (err) {
-                        console.error(">>> [ERRO] Falha ao inserir no Mongo:", err.message);
+                        console.error("    ✗ ERRO ao inserir hospitais:", err.message, '\n');
                         resolve();
                     }
                 });
         });
     };
 
-    // --- CARGA DE HOSPITAIS ---
-    const loadHospitais = () => {
-        return new Promise((resolve) => {
-            const results = [];
-            fs.createReadStream(path.join(__dirname, '../../../../', process.env.PATH_CSV_HOSPITAIS))
-                .pipe(csv({ separator: ';', headers: ['codigo', 'instituicao', 'regiao', 'concelho', 'morada'] }))
-                .on('data', (data) => results.push(data))
-                .on('end', async () => {
-                    await HospitalModel.deleteMany({});
-                    await HospitalModel.insertMany(results.slice(1)); // Ignora a 1ª linha se for cabeçalho
-                    console.log(`>>> [SUCESSO] Hospitais carregados.`);
-                    resolve();
-                });
-        });
-    };
-
+    // =================================================================
+    // 2. CARGA DE SERVIÇOS
+    // =================================================================
     const loadServicos = () => {
         return new Promise((resolve) => {
             const results = [];
             const fullPath = path.join(__dirname, '../../../../', process.env.PATH_CSV_SERVICOS);
             
+            console.log(`>>> [2/4] A carregar Serviços de: ${fullPath}`);
+
             fs.createReadStream(fullPath)
                 .pipe(csv({ 
                     separator: ',', 
-                    headers: false 
+                    headers: ['ServiceKey', 'Speciality', 'PriorityCode', 'PriorityDescription', 
+                              'TypeCode', 'TypeDescription']
                 }))
                 .on('data', (row) => {
-                    // Tradução de termos baseada na tua linha de exemplo:
-                    // row[1] = Psiquiatria...
-                    // row[2] = 3 (População)
-                    // row[5] = Appointment (Tipo)
+                    // Ignora cabeçalho
+                    if (row.ServiceKey === 'ServiceKey' || !row.ServiceKey) return;
 
-                    let tipoTraduzido = row[5] ? row[5].trim() : '';
-                    if (tipoTraduzido === 'Appointment') tipoTraduzido = 'Consulta';
-                    if (tipoTraduzido === 'Urgency') tipoTraduzido = 'Urgência';
-                    if (tipoTraduzido === 'Surgery') tipoTraduzido = 'Cirurgia';
+                    const serviceKey = parseOrNull(row.ServiceKey, 'int');
+                    const speciality = parseOrNull(row.Speciality);
 
-                    let popTraduzida = row[2] ? row[2].trim() : 'Todos';
-                    if (popTraduzida === '3') popTraduzida = 'Todos';
-                    if (popTraduzida === '1') popTraduzida = 'Adulto';
-                    if (popTraduzida === '2') popTraduzida = 'Pediátrico';
+                    // Valida campos essenciais
+                    if (!serviceKey || !speciality) return;
 
-                    if (row[1] && row[1] !== 'Speciality') { // Ignora cabeçalho
-                        results.push({
-                            nome_servico: row[1].trim(),
-                            tipo: tipoTraduzido,
-                            populacao: popTraduzida
-                        });
-                    }
+                    results.push({
+                        ServiceKey: serviceKey,
+                        Speciality: speciality,
+                        PriorityCode: parseOrNull(row.PriorityCode),
+                        PriorityDescription: parseOrNull(row.PriorityDescription),
+                        TypeCode: parseOrNull(row.TypeCode),
+                        TypeDescription: parseOrNull(row.TypeDescription)
+                    });
                 })
                 .on('end', async () => {
                     try {
-                        await ServicoModel.deleteMany({});
                         if (results.length > 0) {
+                            await ServicoModel.deleteMany({});
                             await ServicoModel.insertMany(results);
-                            console.log(`>>> [SUCESSO] Servicos: ${results.length} registos inseridos.`);
+                            console.log(`    ✓ ${results.length} serviços inseridos.\n`);
+                        } else {
+                            console.log("    ⚠ Nenhum serviço válido encontrado.\n");
                         }
                         resolve();
                     } catch (err) {
-                        console.error(">>> [ERRO] Servicos:", err.message);
+                        console.error("    ✗ ERRO ao inserir serviços:", err.message, '\n');
                         resolve();
                     }
                 });
         });
     };
 
+    // =================================================================
+    // 3. CARGA DE URGÊNCIAS (TemposEsperaEmergencia)
+    // =================================================================
+    const loadUrgencias = () => {
+        return new Promise((resolve) => {
+            const fullPath = path.join(__dirname, '../../../../', process.env.PATH_CSV_ESPERA_URGENCIA);
+            
+            console.log(`>>> [3/4] A carregar Urgências de: ${fullPath}`);
+
+            // Mapa para agrupar por institutionId + data
+            const registosAgrupados = new Map();
+
+            fs.createReadStream(fullPath)
+                .pipe(csv({ 
+                    separator: ',',
+                    headers: false // Lê por índice
+                }))
+                .on('data', (row) => {
+                    // row[0] = Data/Hora
+                    // row[2] = InstitutionID
+                    // row[4] = EmergencyType Code
+                    // row[6], row[7] = Verde (Tempo, Utentes)
+                    // row[8], row[9] = Amarelo (Tempo, Utentes)
+                    // row[10], row[11] = Laranja (Tempo, Utentes)
+                    // row[12], row[13] = Vermelho (Tempo, Utentes)
+
+                    const dataObj = parseOrNull(row[0], 'date');
+                    const institutionId = parseOrNull(row[2]);
+
+                    // Ignora linhas sem data ou ID de instituição válidos
+                    if (!dataObj || !institutionId) return;
+
+                    const emergencyCode = parseOrNull(row[4]) || 'Geral';
+                    const chave = `${institutionId}_${dataObj.toISOString()}`;
+
+                    // Se ainda não existe este registo, cria
+                    if (!registosAgrupados.has(chave)) {
+                        registosAgrupados.set(chave, {
+                            LastUpdate: dataObj,
+                            extractionDate: new Date(),
+                            institutionId: institutionId,
+                            EmergencyType: {
+                                Code: emergencyCode,
+                                Description: 'Urgência'
+                            },
+                            Triage: {
+                                Red: { Time: null, Length: null },
+                                Orange: { Time: null, Length: null },
+                                Yellow: { Time: null, Length: null },
+                                Green: { Time: null, Length: null },
+                                Blue: { Time: null, Length: null }
+                            }
+                        });
+                    }
+
+                    const registo = registosAgrupados.get(chave);
+
+                    // Mapear triagem (ajusta índices conforme o teu CSV)
+                    registo.Triage.Green.Time = parseOrNull(row[6], 'int');
+                    registo.Triage.Green.Length = parseOrNull(row[7], 'int');
+                    
+                    registo.Triage.Yellow.Time = parseOrNull(row[8], 'int');
+                    registo.Triage.Yellow.Length = parseOrNull(row[9], 'int');
+                    
+                    registo.Triage.Orange.Time = parseOrNull(row[10], 'int');
+                    registo.Triage.Orange.Length = parseOrNull(row[11], 'int');
+                    
+                    registo.Triage.Red.Time = parseOrNull(row[12], 'int');
+                    registo.Triage.Red.Length = parseOrNull(row[13], 'int');
+                })
+                .on('end', async () => {
+                    try {
+                        const resultados = Array.from(registosAgrupados.values());
+                        
+                        if (resultados.length > 0) {
+                            await TempoEsperaEmergenciaModel.deleteMany({});
+                            await TempoEsperaEmergenciaModel.insertMany(resultados);
+                            console.log(`    ✓ ${resultados.length} registos de urgência inseridos.\n`);
+                        } else {
+                            console.log("    ⚠ Nenhuma urgência válida encontrada.\n");
+                        }
+                        resolve();
+                    } catch (err) {
+                        console.error("    ✗ ERRO ao inserir urgências:", err.message, '\n');
+                        resolve();
+                    }
+                });
+        });
+    };
+
+    // =================================================================
+    // 4. CARGA DE CONSULTAS/CIRURGIAS (TemposEsperaConsultaCirurgia)
+    // =================================================================
     const loadConsultasCirurgias = () => {
         return new Promise((resolve) => {
             const results = [];
             const fullPath = path.join(__dirname, '../../../../', process.env.PATH_CSV_ESPERA_CONSULTA);
             
+            console.log(`>>> [4/4] A carregar Consultas/Cirurgias de: ${fullPath}`);
+
+            const mesesPortugues = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+
             fs.createReadStream(fullPath)
-                .pipe(csv({ separator: ',', headers: false })) 
+                .pipe(csv({ 
+                    separator: ',', 
+                    headers: false 
+                })) 
                 .on('data', (row) => {
-                    // Removemos o isNaN porque o teu hospital_id é o NOME (texto)
-                    if (!row[0] || row[0] === 'Nome Instituição') return; 
+                    // row[0] = HospitalName
+                    // row[1] = ServiceKey
+                    // row[2] = AverageWaitingTime
+                    // row[3] = Month (número ou nome)
+                    // row[4] = Year
+                    // row[5] = NumberOfPeople
+
+                    // Ignora cabeçalho
+                    if (!row[0] || row[0] === 'HospitalName' || row[0] === 'Nome Instituição') return;
+
+                    const hospitalName = parseOrNull(row[0]);
+                    const serviceKey = parseOrNull(row[1], 'int');
+                    const avgWaitTime = parseOrNull(row[2], 'number');
+                    
+                    // Ignora linhas onde todos os campos principais estão vazios
+                    if (!hospitalName && !serviceKey && !avgWaitTime) return;
+
+                    // Processar mês
+                    const mesNum = parseOrNull(row[3], 'int');
+                    let mesNome = null;
+                    
+                    if (mesNum && mesNum >= 1 && mesNum <= 12) {
+                        mesNome = mesesPortugues[mesNum - 1];
+                    } else if (row[3]) {
+                        mesNome = parseOrNull(row[3]);
+                    }
+
+                    const year = parseOrNull(row[4], 'int');
+                    const numberOfPeople = parseOrNull(row[5], 'int') || 0;
 
                     results.push({
-                        hospital_id: row[0],         // "Centro Materno-Infantil..."
-                        tipo: row[1],                // "7"
-                        especialidade: row[2],       // "41"
-                        prioridade: row[3] || 'Normal',
-                        // Na tua linha: row[4] parece ser o ANO (2024) e row[5] o VALOR (21)
-                        // Ajusta se a ordem for diferente no ficheiro real
-                        tempo_medio_resposta: parseFloat(row[5]) || 0, 
-                        lista_espera_total: parseInt(row[5]) || 0 
+                        HospitalName: hospitalName,
+                        ServiceKey: serviceKey,
+                        AverageWaitingTime_Speciality_Priority_Institution: avgWaitTime,
+                        MonthPortuguese: mesNome,
+                        Year: year,
+                        NumberOfPeople: numberOfPeople
                     });
                 })
                 .on('end', async () => {
                     try {
-                        await ConsultaCirurgiaModel.deleteMany({});
                         if (results.length > 0) {
-                            await ConsultaCirurgiaModel.insertMany(results);
-                            console.log(`>>> [SUCESSO] Consultas/Cirurgias: ${results.length} registos.`);
+                            await TempoEsperaConsultaCirurgiaModel.deleteMany({});
+                            await TempoEsperaConsultaCirurgiaModel.insertMany(results);
+                            console.log(`    ${results.length} registos de consultas/cirurgias inseridos.\n`);
+                        } else {
+                            console.log("    Nenhuma consulta/cirurgia válida encontrada.\n");
                         }
                         resolve();
                     } catch (err) {
-                        console.error(">>> [ERRO] Consultas/Cirurgias:", err.message);
+                        console.error("    ERRO ao inserir consultas/cirurgias:", err.message, '\n');
                         resolve();
                     }
                 });
         });
     };
 
+    // =================================================================
+    // EXECUÇÃO SEQUENCIAL
+    // =================================================================
     await loadHospitais();
-    await loadUrgencias();
     await loadServicos();
-    await loadConsultasCirurgias();
-
-    console.log('>>> Processo concluído.');
-    process.exit();
-};
-
-runLoader();
+    await loadUrgencias();
+    await loadConsultasCirurgias(); 
+    console.log('>>> Carga concluída. A encerrar conexão com MongoDB.');
+    mongoose.connection.close();
+}

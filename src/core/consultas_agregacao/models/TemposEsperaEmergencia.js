@@ -3,40 +3,49 @@ const mongoose = require('mongoose');
 const TempoEsperaEmergenciaSchema = new mongoose.Schema({
   LastUpdate: {
     type: Date,
-    required: true
+    required: false,
+    default: null
   },
   extractionDate: {
     type: Date,
-    required: true
+    required: false,
+    default: null
   },
   institutionId: {
     type: String,
-    required: true
+    required: false,
+    default: null
   },
   EmergencyType: {
-    Code: String,
-    Description: String
+    Code: {
+      type: String,
+      default: null
+    },
+    Description: {
+      type: String,
+      default: null
+    }
   },
   Triage: {
     Red: {
-      Time: Number,
-      Length: Number
+      Time: { type: Number, default: null },
+      Length: { type: Number, default: null }
     },
     Orange: {
-      Time: Number,
-      Length: Number
+      Time: { type: Number, default: null },
+      Length: { type: Number, default: null }
     },
     Yellow: {
-      Time: Number,
-      Length: Number
+      Time: { type: Number, default: null },
+      Length: { type: Number, default: null }
     },
     Green: {
-      Time: Number,
-      Length: Number
+      Time: { type: Number, default: null },
+      Length: { type: Number, default: null }
     },
     Blue: {
-      Time: Number,
-      Length: Number
+      Time: { type: Number, default: null },
+      Length: { type: Number, default: null }
     }
   }
 }, { 
@@ -44,10 +53,10 @@ const TempoEsperaEmergenciaSchema = new mongoose.Schema({
   timestamps: true 
 });
 
-// Índices para otimizar consultas
-TempoEsperaEmergenciaSchema.index({ institutionId: 1 });
-TempoEsperaEmergenciaSchema.index({ LastUpdate: -1 });
-TempoEsperaEmergenciaSchema.index({ extractionDate: -1 });
-TempoEsperaEmergenciaSchema.index({ institutionId: 1, LastUpdate: -1 });
+// Índices com sparse: true
+TempoEsperaEmergenciaSchema.index({ institutionId: 1 }, { sparse: true });
+TempoEsperaEmergenciaSchema.index({ LastUpdate: -1 }, { sparse: true });
+TempoEsperaEmergenciaSchema.index({ extractionDate: -1 }, { sparse: true });
+TempoEsperaEmergenciaSchema.index({ institutionId: 1, LastUpdate: -1 }, { sparse: true });
 
 module.exports = mongoose.model('TempoEsperaEmergencia', TempoEsperaEmergenciaSchema);

@@ -3,24 +3,29 @@ const mongoose = require('mongoose');
 const TempoEsperaConsultaCirurgiaSchema = new mongoose.Schema({
   HospitalName: {
     type: String,
-    required: true
+    required: false, 
+    default: null
   },
   ServiceKey: {
     type: Number,
-    required: true,
-    ref: 'Servico'
+    required: false, 
+    ref: 'Servico',
+    default: null
   },
   AverageWaitingTime_Speciality_Priority_Institution: {
     type: Number,
-    required: true
+    required: false,  
+    default: null
   },
   MonthPortuguese: {
     type: String,
-    required: true
+    required: false,  
+    default: null
   },
   Year: {
     type: Number,
-    required: true
+    required: false,
+    default: null
   },
   NumberOfPeople: {
     type: Number,
@@ -31,10 +36,10 @@ const TempoEsperaConsultaCirurgiaSchema = new mongoose.Schema({
   timestamps: true 
 });
 
-// Índices para otimizar consultas
-TempoEsperaConsultaCirurgiaSchema.index({ HospitalName: 1 });
-TempoEsperaConsultaCirurgiaSchema.index({ ServiceKey: 1 });
-TempoEsperaConsultaCirurgiaSchema.index({ Year: 1, MonthPortuguese: 1 });
-TempoEsperaConsultaCirurgiaSchema.index({ HospitalName: 1, Year: 1, MonthPortuguese: 1 });
+// Índices para otimizar consultas (com sparse: true para permitir null)
+TempoEsperaConsultaCirurgiaSchema.index({ HospitalName: 1 }, { sparse: true });
+TempoEsperaConsultaCirurgiaSchema.index({ ServiceKey: 1 }, { sparse: true });
+TempoEsperaConsultaCirurgiaSchema.index({ Year: 1, MonthPortuguese: 1 }, { sparse: true });
+TempoEsperaConsultaCirurgiaSchema.index({ HospitalName: 1, Year: 1, MonthPortuguese: 1 }, { sparse: true });
 
 module.exports = mongoose.model('TempoEsperaConsultaCirurgia', TempoEsperaConsultaCirurgiaSchema);
