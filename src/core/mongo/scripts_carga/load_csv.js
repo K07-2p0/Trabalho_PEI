@@ -12,6 +12,14 @@ const Servico = require(path.join(__dirname, '../../../../src/core/consultas_agr
 const TemposEsperaEmergencia = require(path.join(__dirname, '../../../../src/core/consultas_agregacao/models/TemposEsperaEmergencia'));
 const TemposEsperaConsultaCirurgia = require(path.join(__dirname, '../../../../src/core/consultas_agregacao/models/TemposEsperaConsultaCirurgia'));
 
+// Função para remover BOM UTF-8
+const stripBOM = (content) => {
+    if (content.charCodeAt(0) === 0xFEFF) {
+        return content.slice(1);
+    }
+    return content;
+};
+
 const runLoader = async () => {
     try {
         await connectDB();
@@ -45,7 +53,15 @@ const loadHospitais = () => {
         
         console.log(`>>> [1/4] A carregar Hospitais de: ${fullPath}`);
 
-        fs.createReadStream(fullPath)
+        // Lê o ficheiro completo e remove BOM
+        const fileContent = stripBOM(fs.readFileSync(fullPath, 'utf8'));
+        const lines = fileContent.split('\n');
+        
+        // Usa stream a partir do conteúdo limpo
+        const { Readable } = require('stream');
+        const stream = Readable.from([fileContent]);
+
+        stream
             .pipe(csv())
             .on('data', (row) => {
                 // Validação: Só adiciona se HospitalID estiver presente
@@ -96,7 +112,14 @@ const loadServicos = () => {
         
         console.log(`>>> [2/4] A carregar Serviços de: ${fullPath}`);
 
-        fs.createReadStream(fullPath)
+        // Lê o ficheiro completo e remove BOM
+        const fileContent = stripBOM(fs.readFileSync(fullPath, 'utf8'));
+        
+        // Usa stream a partir do conteúdo limpo
+        const { Readable } = require('stream');
+        const stream = Readable.from([fileContent]);
+
+        stream
             .pipe(csv())
             .on('data', (row) => {
                 // Validação: ServiceKey é obrigatório e deve ser um número válido
@@ -146,29 +169,31 @@ const loadUrgencias = () => {
         fs.createReadStream(fullPath)
             .pipe(csv())
             .on('data', (row) => {
-                const dataObj = new Date(row.Date);
+                // Usa os nomes corretos das colunas do CSV
+                const lastUpdateDate = new Date(row.LastUpdate);
+                const extractionDate = new Date(row.extractionDate);
                 
-                // Validação: Ignora linhas com datas inválidas ou sem HospitalID
-                if (isNaN(dataObj.getTime()) || !row.HospitalID) {
+                // Validação: Ignora linhas com datas inválidas ou sem institutionId
+                if (isNaN(lastUpdateDate.getTime()) || !row.institutionId) {
                     return;
                 }
 
                 results.push({
-                    Date: dataObj,
-                    Hour: row.Hour || null,
-                    HospitalID: row.HospitalID || null,
-                    EmergencyType: row.EmergencyType || null,
-                    EmergencyTypeDesc: row.EmergencyTypeDesc || null,
-                    Queue1: parseInt(row.Queue1) || 0,
-                    WaitingQueue1: parseInt(row.WaitingQueue1) || 0,
-                    Queue2: parseInt(row.Queue2) || 0,
-                    WaitingQueue2: parseInt(row.WaitingQueue2) || 0,
-                    Queue3: parseInt(row.Queue3) || 0,
-                    WaitingQueue3: parseInt(row.WaitingQueue3) || 0,
-                    Queue4: parseInt(row.Queue4) || 0,
-                    WaitingQueue4: parseInt(row.WaitingQueue4) || 0,
-                    Queue5: parseInt(row.Queue5) || 0,
-                    WaitingQueue5: parseInt(row.WaitingQueue5) || 0
+                    Date: lastUpdateDate,
+                    Hour: lastUpdateDate.toISOString().split('T')[1].split('.')[0], // Extrai hora de LastUpdate
+                    HospitalID: row.institutionId,
+                    EmergencyType: row['EmergencyType.Code'],
+                    EmergencyTypeDesc: row['EmergencyType.Description'],
+                    Queue1: parseInt(row['Triage.Red.Time']) || 0,
+                    WaitingQueue1: parseInt(row['Triage.Red.Length']) || 0,
+                    Queue2: parseInt(row['Triage.Orange.Time']) || 0,
+                    WaitingQueue2: parseInt(row['Triage.Orange.Length']) || 0,
+                    Queue3: parseInt(row['Triage.Yellow.Time']) || 0,
+                    WaitingQueue3: parseInt(row['Triage.Yellow.Length']) || 0,
+                    Queue4: parseInt(row['Triage.Green.Time']) || 0,
+                    WaitingQueue4: parseInt(row['Triage.Green.Length']) || 0,
+                    Queue5: parseInt(row['Triage.Blue.Time']) || 0,
+                    WaitingQueue5: parseInt(row['Triage.Blue.Length']) || 0
                 });
             })
             .on('end', async () => {
@@ -193,6 +218,7 @@ const loadUrgencias = () => {
     });
 };
 
+
 const loadConsultasCirurgias = () => {
     return new Promise((resolve, reject) => {
         const results = [];
@@ -200,7 +226,14 @@ const loadConsultasCirurgias = () => {
         
         console.log(`>>> [4/4] A carregar Consultas/Cirurgias de: ${fullPath}`);
 
-        fs.createReadStream(fullPath)
+        // Lê o ficheiro completo e remove BOM
+        const fileContent = stripBOM(fs.readFileSync(fullPath, 'utf8'));
+        
+        // Usa stream a partir do conteúdo limpo
+        const { Readable } = require('stream');
+        const stream = Readable.from([fileContent]);
+
+        stream
             .pipe(csv())
             .on('data', (row) => {
                 // Validação: pelo menos HospitalName deve existir
@@ -210,11 +243,11 @@ const loadConsultasCirurgias = () => {
                 
                 results.push({
                     HospitalName: row.HospitalName || null,
-                    ServiceType: row.ServiceType || null,
-                    Speciality: row.Speciality || null,
-                    Priority: row.Priority || null,
+                    ServiceKey: parseInt(row.ServiceKey) || null,
+                    AverageWaitingTime_Speciality_Priority_Institution: parseFloat(row.AverageWaitingTime_Speciality_Priority_Institution) || null,
+                    MonthPortuguese: row.MonthPortuguese || null,
                     Year: parseInt(row.Year) || null,
-                    WaitingUsersTotal: parseInt(row.WaitingUsersTotal) || 0
+                    NumberOfPeople: parseInt(row.NumberOfPeople) || 0
                 });
             })
             .on('end', async () => {
