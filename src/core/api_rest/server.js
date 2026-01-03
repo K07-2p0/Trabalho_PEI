@@ -10,7 +10,7 @@ app.use(express.json());
 app.use(express.text({ type: 'application/xml' }));
 
 // Conectar MongoDB
-mongoose.connect(process.env.MONGODB_URI)
+mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('>>> MongoDB conectado com sucesso'))
     .catch(err => console.error('Erro ao conectar MongoDB:', err));
 
