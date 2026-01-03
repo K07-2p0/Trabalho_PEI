@@ -1,99 +1,83 @@
-const mongoose = require('mongoose');
+const TempoEsperaEmergencia = require('../models/TemposEsperaEmergencia');
 
 /**
- * QUERY 1: Média de utentes em espera para 1ª observação médica por tipologia
- * Parâmetros: dataInicio, dataFim, tipologia (opcional)
- * Discrimina por categoria de triagem
+ * Pipeline para calcular a média de utentes em espera.
+ * @param {Date} dataInicio 
+ * @param {Date} dataFim 
  */
-async function getMediaEsperaUrgencia(dataInicio, dataFim, tipologia = null) {
-    try {
-        const matchStage = {
-            timestamp: {
-                $gte: new Date(dataInicio),
-                $lte: new Date(dataFim)
-            }
-        };
-
-        // Filtro opcional por tipologia
-        if (tipologia) {
-            matchStage.tipologia = tipologia;
-        }
-
-        const pipeline = [
-            // Filtrar por período e tipologia (se especificado)
-            { $match: matchStage },
-            
-            // Unwind dos utentes em espera por categoria
-            {
-                $project: {
-                    tipologia: 1,
-                    timestamp: 1,
-                    utentes: [
-                        { 
-                            categoria: 'não urgente', 
-                            quantidade: '$utentes_espera.nao_urgente' 
-                        },
-                        { 
-                            categoria: 'pouco urgente', 
-                            quantidade: '$utentes_espera.pouco_urgente' 
-                        },
-                        { 
-                            categoria: 'urgente', 
-                            quantidade: '$utentes_espera.urgente' 
-                        },
-                        { 
-                            categoria: 'muito urgente', 
-                            quantidade: '$utentes_espera.muito_urgente' 
-                        }
-                    ]
+const getMediaUtentesEspera = async (dataInicio, dataFim) => {
+    return await TempoEsperaEmergencia.aggregate([
+        {
+            // 1. Filtrar pelo intervalo de tempo
+            $match: {
+                LastUpdate: {
+                    $gte: dataInicio,
+                    $lte: dataFim
                 }
-            },
-            { $unwind: '$utentes' },
-            
-            // Agrupar por tipologia e categoria de triagem
-            {
-                $group: {
-                    _id: {
-                        tipologia: '$tipologia',
-                        categoria: '$utentes.categoria'
+            }
+        },
+        {
+            // 2. Criar array com todos os níveis de triagem
+            $project: {
+                tipologia: "$EmergencyType.Description",
+                LastUpdate: 1,
+                triagens: [
+                    { 
+                        nome: "Muito Urgente", 
+                        utentes: "$Triage.Red.Length",
+                        tempo: "$Triage.Red.Time"
                     },
-                    media_utentes: { $avg: '$utentes.quantidade' },
-                    total_registos: { $sum: 1 }
-                }
-            },
-            
-            // Ordenar por tipologia e categoria
-            {
-                $sort: {
-                    '_id.tipologia': 1,
-                    '_id.categoria': 1
-                }
-            },
-            
-            // Formatar resultado
-            {
-                $project: {
-                    _id: 0,
-                    tipologia: '$_id.tipologia',
-                    categoria_triagem: '$_id.categoria',
-                    media_utentes_espera: { $round: ['$media_utentes', 2] },
-                    total_registos: 1
-                }
+                    { 
+                        nome: "Urgente", 
+                        utentes: "$Triage.Orange.Length",
+                        tempo: "$Triage.Orange.Time"
+                    },
+                    { 
+                        nome: "Pouco Urgente", 
+                        utentes: "$Triage.Yellow.Length",
+                        tempo: "$Triage.Yellow.Time"
+                    },
+                    { 
+                        nome: "Não Urgente (Verde)", 
+                        utentes: "$Triage.Green.Length",
+                        tempo: "$Triage.Green.Time"
+                    },
+                    { 
+                        nome: "Não Urgente (Azul)", 
+                        utentes: "$Triage.Blue.Length",
+                        tempo: "$Triage.Blue.Time"
+                    }
+                ]
             }
-        ];
+        },
+        {
+            // 3. Desagregar array de triagens
+            $unwind: "$triagens"
+        },
+        {
+            // 4. Agrupar por tipologia e triagem e calcular média
+            $group: {
+                _id: {
+                    tipologia: "$tipologia",
+                    triagem: "$triagens.nome"
+                },
+                media_utentes: { $avg: "$triagens.utentes" }
+            }
+        },
+        {
+            // 5. Formatar a saída
+            $project: {
+                _id: 0,
+                tipologia: "$_id.tipologia",
+                triagem: "$_id.triagem",
+                media_utentes: { $round: ["$media_utentes", 2] }
+            }
+        },
+        {
+            // 6. Ordenar para o JSON ficar organizado
+            $sort: { tipologia: 1, triagem: 1 }
+        }
+    ]);
+};
 
-        // Executar pipeline diretamente na coleção
-        const resultado = await mongoose.connection.db
-            .collection('tempos_espera_emergencia')
-            .aggregate(pipeline)
-            .toArray();
-
-        return resultado;
-
-    } catch (erro) {
-        console.error('Erro ao calcular média de espera urgência:', erro);
-        throw erro;
-    }
-}
-
-module.exports = { getMediaEsperaUrgencia };
+module.exports = getMediaUtentesEspera;

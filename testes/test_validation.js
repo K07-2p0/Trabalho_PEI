@@ -1,4 +1,4 @@
-const { validateXML } = require('./src/core/mongo/services/xml_validator');
+const { validateXML } = require('../src/core/mongo/services/xml_validator');
 const fs = require('fs');
 
 async function testar() {

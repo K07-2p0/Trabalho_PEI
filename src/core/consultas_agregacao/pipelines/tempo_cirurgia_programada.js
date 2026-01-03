@@ -1,80 +1,60 @@
-const mongoose = require('mongoose');
+const TempoEsperaConsultaCirurgia = require('../models/TemposEsperaConsultaCirurgia');
 
 /**
- * QUERY 5: Tempo médio de espera para cirurgia programada (geral vs. oncológica)
- * Parâmetros: especialidade, dataInicio, dataFim
- * Discrimina entre cirurgia geral e oncológica
+ * Tempo médio de espera para cirurgia programada (Geral vs Oncológica)
+ * @param {Number} mes 
+ * @param {Number} ano 
  */
-async function getTempoMedioCirurgia(especialidade, dataInicio, dataFim) {
-    try {
-        const pipeline = [
-            // 1. Filtrar cirurgias da especialidade no período
-            {
-                $match: {
-                    tipo_atividade: 'Cirurgia',
-                    especialidade: especialidade,
-                    data_registo: {
-                        $gte: new Date(dataInicio),
-                        $lte: new Date(dataFim)
-                    }
+const getTempoCirurgiaProgramada = async (mes, ano) => {
+    const dataInicio = new Date(ano, mes - 1, 1);
+    const dataFim = new Date(ano, mes, 0, 23, 59, 59, 999);
+
+    return await TempoEsperaConsultaCirurgia.aggregate([
+        {
+            // 1. Filtrar por cirurgias e período
+            $match: {
+                Type: "S", // S = Surgery (Cirurgia)
+                LastUpdate: {
+                    $gte: dataInicio,
+                    $lte: dataFim
                 }
-            },
-            
-            // 2. Classificar como oncológica ou não
-            {
-                $addFields: {
-                    tipo_cirurgia: {
-                        $cond: [
-                            { $regexMatch: { input: '$prioridade', regex: /oncol/i } },
-                            'Oncológica',
-                            'Geral'
-                        ]
-                    }
-                }
-            },
-            
-            // 3. Agrupar por tipo de cirurgia e prioridade
-            {
-                $group: {
-                    _id: {
-                        tipo: '$tipo_cirurgia',
-                        prioridade: '$prioridade'
-                    },
-                    tempo_medio_espera_dias: { $avg: '$tempo_medio_dias' },
-                    total_utentes_espera: { $sum: '$utentes_lista_espera' },
-                    total_registos: { $sum: 1 }
-                }
-            },
-            
-            // 4. Formatar resultado
-            {
-                $project: {
-                    _id: 0,
-                    tipo_cirurgia: '$_id.tipo',
-                    prioridade: '$_id.prioridade',
-                    tempo_medio_dias: { $round: ['$tempo_medio_espera_dias', 2] },
-                    total_utentes_lista_espera: '$total_utentes_espera',
-                    total_registos: 1
-                }
-            },
-            
-            // 5. Ordenar por tipo e tempo médio
-            {
-                $sort: { tipo_cirurgia: 1, tempo_medio_dias: -1 }
             }
-        ];
+        },
+        {
+            // 2. Classificar tipo de cirurgia
+            $addFields: {
+                tipo_cirurgia: {
+                    $cond: {
+                        if: { $regexMatch: { input: "$Specialty.Description", regex: /oncolog/i } },
+                        then: "Oncológica",
+                        else: "Geral"
+                    }
+                }
+            }
+        },
+        {
+            // 3. Agrupar por tipo
+            $group: {
+                _id: "$tipo_cirurgia",
+                tempo_medio: { $avg: "$Patients.AverageResponseTime" },
+                total_pacientes: { $sum: "$Patients.Total" },
+                total_registos: { $sum: 1 }
+            }
+        },
+        {
+            // 4. Formatar saída
+            $project: {
+                _id: 0,
+                tipo_cirurgia: "$_id",
+                tempo_medio_dias: { $round: ["$tempo_medio", 2] },
+                total_pacientes: 1,
+                total_registos: 1
+            }
+        },
+        {
+            $sort: { tempo_medio_dias: 1 }
+        }
+    ]);
+};
 
-        const resultado = await mongoose.connection.db
-            .collection('tempos_espera_consulta_cirurgia')
-            .aggregate(pipeline)
-            .toArray();
-
-        return resultado;
-
-    } catch (erro) {
-        console.error('Erro ao calcular tempo médio cirurgia:', erro);
-        throw erro;
-    }
-}
-
-module.exports = { getTempoMedioCirurgia };
+module.exports = getTempoCirurgiaProgramada;

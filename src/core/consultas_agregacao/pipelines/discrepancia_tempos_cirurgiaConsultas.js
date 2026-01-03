@@ -1,134 +1,129 @@
-const mongoose = require('mongoose');
+const TempoEsperaConsultaCirurgia = require('../models/TemposEsperaConsultaCirurgia');
 
 /**
- * QUERY 6: Discrepância entre tempos de espera de consultas e cirurgias
- * Parâmetros: hospitalId, especialidade, dataInicio, dataFim, agregacao ('dia', 'semana', 'mes')
- * Compara evolução temporal de consultas vs. cirurgias
+ * Discrepância entre tempos de resposta de Consultas vs Cirurgias
+ * @param {String} granularidade - 'dia', 'semana', 'mes'
+ * @param {String} inicio 
+ * @param {String} fim 
  */
-async function getDiscrepanciaConsultaCirurgia(hospitalId, especialidade, dataInicio, dataFim, agregacao = 'dia') {
-    try {
-        // Determinar formato de data para agregação
-        let dateFormat = '%Y-%m-%d'; // dia
-        if (agregacao === 'mes') dateFormat = '%Y-%m';
-        if (agregacao === 'semana') dateFormat = '%Y-W%V';
+const getDiscrepanciaTemposCirurgiaConsultas = async (granularidade, inicio, fim) => {
+    const dataInicio = new Date(inicio);
+    const dataFim = new Date(fim);
+    dataFim.setHours(23, 59, 59, 999);
 
-        const pipeline = [
-            // 1. Filtrar por hospital, especialidade e período
-            {
-                $match: {
-                    hospital_id: hospitalId,
-                    especialidade: especialidade,
-                    data_registo: {
-                        $gte: new Date(dataInicio),
-                        $lte: new Date(dataFim)
-                    }
-                }
-            },
-            
-            // 2. Adicionar período formatado
-            {
-                $addFields: {
-                    periodo: {
-                        $dateToString: {
-                            format: dateFormat,
-                            date: '$data_registo'
-                        }
-                    }
-                }
-            },
-            
-            // 3. Agrupar por período e tipo de atividade
-            {
-                $group: {
-                    _id: {
-                        periodo: '$periodo',
-                        tipo_atividade: '$tipo_atividade'
-                    },
-                    tempo_medio_dias: { $avg: '$tempo_medio_dias' },
-                    total_utentes: { $sum: '$utentes_lista_espera' },
-                    total_registos: { $sum: 1 }
-                }
-            },
-            
-            // 4. Separar consultas e cirurgias
-            {
-                $group: {
-                    _id: '$_id.periodo',
-                    dados: {
-                        $push: {
-                            tipo: '$_id.tipo_atividade',
-                            tempo_medio: '$tempo_medio_dias',
-                            utentes: '$total_utentes',
-                            registos: '$total_registos'
-                        }
-                    }
-                }
-            },
-            
-            // 5. Calcular discrepância
-            {
-                $project: {
-                    _id: 0,
-                    periodo: '$_id',
-                    consulta: {
-                        $arrayElemAt: [
-                            {
-                                $filter: {
-                                    input: '$dados',
-                                    cond: { $eq: ['$$this.tipo', 'Consulta'] }
-                                }
-                            },
-                            0
-                        ]
-                    },
-                    cirurgia: {
-                        $arrayElemAt: [
-                            {
-                                $filter: {
-                                    input: '$dados',
-                                    cond: { $eq: ['$$this.tipo', 'Cirurgia'] }
-                                }
-                            },
-                            0
-                        ]
-                    }
-                }
-            },
-            
-            // 6. Adicionar cálculo de discrepância
-            {
-                $addFields: {
-                    discrepancia_dias: {
-                        $round: [
-                            {
-                                $subtract: [
-                                    { $ifNull: ['$cirurgia.tempo_medio', 0] },
-                                    { $ifNull: ['$consulta.tempo_medio', 0] }
-                                ]
-                            },
-                            2
-                        ]
-                    },
-                    tempo_medio_consulta: { $round: [{ $ifNull: ['$consulta.tempo_medio', 0] }, 2] },
-                    tempo_medio_cirurgia: { $round: [{ $ifNull: ['$cirurgia.tempo_medio', 0] }, 2] }
-                }
-            },
-            
-            // 7. Ordenar por período
-            { $sort: { periodo: 1 } }
-        ];
-
-        const resultado = await mongoose.connection.db
-            .collection('tempos_espera_consulta_cirurgia')
-            .aggregate(pipeline)
-            .toArray();
-
-        return resultado;
-
-    } catch (erro) {
-        console.error('Erro ao calcular discrepância consulta/cirurgia:', erro);
-        throw erro;
+    // Definir formato de agrupamento temporal
+    let formatoTemporal;
+    switch (granularidade) {
+        case 'dia':
+            formatoTemporal = { $dateToString: { format: "%Y-%m-%d", date: "$LastUpdate" } };
+            break;
+        case 'semana':
+            formatoTemporal = { 
+                $concat: [
+                    { $toString: { $year: "$LastUpdate" } },
+                    "-W",
+                    { $toString: { $week: "$LastUpdate" } }
+                ]
+            };
+            break;
+        case 'mes':
+            formatoTemporal = { $dateToString: { format: "%Y-%m", date: "$LastUpdate" } };
+            break;
+        default:
+            formatoTemporal = { $dateToString: { format: "%Y-%m-%d", date: "$LastUpdate" } };
     }
-}
 
-module.exports = { getDiscrepanciaConsultaCirurgia };
+    return await TempoEsperaConsultaCirurgia.aggregate([
+        {
+            // 1. Filtrar por datas
+            $match: {
+                LastUpdate: {
+                    $gte: dataInicio,
+                    $lte: dataFim
+                }
+            }
+        },
+        {
+            // 2. Adicionar período e tipo
+            $addFields: {
+                periodo: formatoTemporal,
+                tipo_servico: {
+                    $cond: {
+                        if: { $eq: ["$Type", "S"] },
+                        then: "Cirurgia",
+                        else: "Consulta"
+                    }
+                }
+            }
+        },
+        {
+            // 3. Agrupar por período e tipo
+            $group: {
+                _id: {
+                    periodo: "$periodo",
+                    tipo: "$tipo_servico"
+                },
+                tempo_medio: { $avg: "$Patients.AverageResponseTime" }
+            }
+        },
+        {
+            // 4. Agrupar por período para comparar
+            $group: {
+                _id: "$_id.periodo",
+                dados: {
+                    $push: {
+                        tipo: "$_id.tipo",
+                        tempo_medio: "$tempo_medio"
+                    }
+                }
+            }
+        },
+        {
+            // 5. Calcular discrepância
+            $project: {
+                _id: 0,
+                periodo: "$_id",
+                consultas: {
+                    $arrayElemAt: [
+                        {
+                            $filter: {
+                                input: "$dados",
+                                cond: { $eq: ["$$this.tipo", "Consulta"] }
+                            }
+                        },
+                        0
+                    ]
+                },
+                cirurgias: {
+                    $arrayElemAt: [
+                        {
+                            $filter: {
+                                input: "$dados",
+                                cond: { $eq: ["$$this.tipo", "Cirurgia"] }
+                            }
+                        },
+                        0
+                    ]
+                }
+            }
+        },
+        {
+            $project: {
+                periodo: 1,
+                tempo_medio_consultas: { $round: ["$consultas.tempo_medio", 2] },
+                tempo_medio_cirurgias: { $round: ["$cirurgias.tempo_medio", 2] },
+                discrepancia_dias: {
+                    $round: [
+                        { $subtract: ["$cirurgias.tempo_medio", "$consultas.tempo_medio"] },
+                        2
+                    ]
+                }
+            }
+        },
+        {
+            $sort: { periodo: 1 }
+        }
+    ]);
+};
+
+module.exports = getDiscrepanciaTemposCirurgiaConsultas;

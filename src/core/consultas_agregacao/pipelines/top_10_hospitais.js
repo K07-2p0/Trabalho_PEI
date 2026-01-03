@@ -1,89 +1,99 @@
-const mongoose = require('mongoose');
+const TempoEsperaEmergencia = require('../models/TemposEsperaEmergencia');
+const Hospital = require('../models/Hospital');
 
 /**
- * QUERY 7: Top 10 hospitais com menores tempos de espera nas urgências pediátricas
- * Parâmetros: dataInicio, dataFim, limite (default: 10)
- * Retorna ranking de hospitais pediátricos
+ * Top 10 Hospitais com menores tempos de espera em urgência pediátrica
+ * @param {String} inicio 
+ * @param {String} fim 
  */
-async function getTopHospitaisPediatria(dataInicio, dataFim, limite = 10) {
-    try {
-        const pipeline = [
-            // 1. Filtrar urgências pediátricas no período
-            {
-                $match: {
-                    timestamp: {
-                        $gte: new Date(dataInicio),
-                        $lte: new Date(dataFim)
-                    },
-                    tipologia: { $regex: /pediátric/i }
+const getTop10Hospitais = async (inicio, fim) => {
+    const dataInicio = new Date(inicio);
+    const dataFim = new Date(fim);
+    dataFim.setHours(23, 59, 59, 999);
+
+    return await TempoEsperaEmergencia.aggregate([
+        {
+            // 1. Filtrar por pediatria e período
+            $match: {
+                "EmergencyType.Description": /pediátri/i,
+                LastUpdate: {
+                    $gte: dataInicio,
+                    $lte: dataFim
                 }
-            },
-            
-            // 2. Calcular total de utentes em espera por registo
-            {
-                $addFields: {
-                    total_utentes_espera: {
-                        $add: [
-                            { $ifNull: ['$utentes_espera.nao_urgente', 0] },
-                            { $ifNull: ['$utentes_espera.pouco_urgente', 0] },
-                            { $ifNull: ['$utentes_espera.urgente', 0] },
-                            { $ifNull: ['$utentes_espera.muito_urgente', 0] }
+            }
+        },
+        {
+            // 2. Calcular tempo médio por hospital
+            $group: {
+                _id: "$institutionId",
+                tempo_medio: {
+                    $avg: {
+                        $divide: [
+                            {
+                                $add: [
+                                    { $multiply: [{ $ifNull: ["$Triage.Red.Time", 0] }, { $ifNull: ["$Triage.Red.Length", 0] }] },
+                                    { $multiply: [{ $ifNull: ["$Triage.Orange.Time", 0] }, { $ifNull: ["$Triage.Orange.Length", 0] }] },
+                                    { $multiply: [{ $ifNull: ["$Triage.Yellow.Time", 0] }, { $ifNull: ["$Triage.Yellow.Length", 0] }] },
+                                    { $multiply: [{ $ifNull: ["$Triage.Green.Time", 0] }, { $ifNull: ["$Triage.Green.Length", 0] }] },
+                                    { $multiply: [{ $ifNull: ["$Triage.Blue.Time", 0] }, { $ifNull: ["$Triage.Blue.Length", 0] }] }
+                                ]
+                            },
+                            {
+                                $add: [
+                                    { $ifNull: ["$Triage.Red.Length", 0] },
+                                    { $ifNull: ["$Triage.Orange.Length", 0] },
+                                    { $ifNull: ["$Triage.Yellow.Length", 0] },
+                                    { $ifNull: ["$Triage.Green.Length", 0] },
+                                    { $ifNull: ["$Triage.Blue.Length", 0] },
+                                    1
+                                ]
+                            }
                         ]
                     }
-                }
-            },
-            
-            // 3. Agrupar por hospital
-            {
-                $group: {
-                    _id: '$hospital_id',
-                    media_utentes_espera: { $avg: '$total_utentes_espera' },
-                    total_registos: { $sum: 1 }
-                }
-            },
-            
-            // 4. Lookup para obter informações do hospital
-            {
-                $lookup: {
-                    from: 'hospitais',
-                    localField: '_id',
-                    foreignField: 'hospital_id',
-                    as: 'hospital_info'
-                }
-            },
-            { $unwind: { path: '$hospital_info', preserveNullAndEmptyArrays: true } },
-            
-            // 5. Formatar resultado
-            {
-                $project: {
-                    _id: 0,
-                    hospital_id: '$_id',
-                    hospital_nome: { $ifNull: ['$hospital_info.hospital_nome', 'Desconhecido'] },
-                    regiao: { $ifNull: ['$hospital_info.regiao', 'N/A'] },
-                    contacto: { $ifNull: ['$hospital_info.contacto', 'N/A'] },
-                    media_utentes_espera: { $round: ['$media_utentes_espera', 2] },
-                    total_registos: 1
-                }
-            },
-            
-            // 6. Ordenar por menor tempo médio (menores valores = melhor)
-            { $sort: { media_utentes_espera: 1 } },
-            
-            // 7. Limitar ao top N
-            { $limit: limite }
-        ];
+                },
+                total_registos: { $sum: 1 }
+            }
+        },
+        {
+            // 3. Converter institutionId para número
+            $addFields: {
+                hospital_id_num: { $toInt: "$_id" }
+            }
+        },
+        {
+            // 4. Lookup com hospitais
+            $lookup: {
+                from: 'Hospitais',
+                localField: 'hospital_id_num',
+                foreignField: 'Codigo',
+                as: 'hospital_info'
+            }
+        },
+        {
+            $unwind: {
+                path: "$hospital_info",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            // 5. Formatar saída
+            $project: {
+                _id: 0,
+                hospital_id: "$_id",
+                hospital_nome: "$hospital_info.Nome",
+                regiao: "$hospital_info.Regiao",
+                tempo_medio_minutos: { $round: ["$tempo_medio", 2] },
+                total_registos: 1
+            }
+        },
+        {
+            // 6. Ordenar e limitar a 10
+            $sort: { tempo_medio_minutos: 1 }
+        },
+        {
+            $limit: 10
+        }
+    ]);
+};
 
-        const resultado = await mongoose.connection.db
-            .collection('tempos_espera_emergencia')
-            .aggregate(pipeline)
-            .toArray();
-
-        return resultado;
-
-    } catch (erro) {
-        console.error('Erro ao calcular top hospitais pediatria:', erro);
-        throw erro;
-    }
-}
-
-module.exports = { getTopHospitaisPediatria };
+module.exports = getTop10Hospitais;

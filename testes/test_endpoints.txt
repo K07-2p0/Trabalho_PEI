@@ -1,0 +1,23 @@
+# 1. Média espera urgências
+GET http://localhost:3000/relatorios/urgencia/media-espera?inicio=2025-02-01&fim=2025-02-28
+
+# 2. Pediatria por região
+GET http://localhost:3000/relatorios/urgencia/pediatria/regiao?inicio=2025-02-01&fim=2025-02-28
+
+# 3. Diferença oncologia
+GET http://localhost:3000/relatorios/consultas/diferenca-oncologia?especialidade=Cardiologia&inicio=2025-02-01&fim=2025-02-28
+
+# 4. Tempo cirurgia
+GET http://localhost:3000/relatorios/cirurgia/tempo-medio?mes=2&ano=2025
+
+# 5. Discrepância
+GET http://localhost:3000/relatorios/discrepancia?granularidade=dia&inicio=2025-02-01&fim=2025-02-28
+
+# 6. Top 10
+GET http://localhost:3000/relatorios/rankings/top-10-pediatria?inicio=2025-02-01&fim=2025-02-28
+
+# 7. Evolução temporal
+GET http://localhost:3000/relatorios/urgencia/evolucao?data=2025-02-16
+
+# 8. Percentagem triagem
+GET http://localhost:3000/relatorios/urgencia/percentagem-triagem?hospital_id=151

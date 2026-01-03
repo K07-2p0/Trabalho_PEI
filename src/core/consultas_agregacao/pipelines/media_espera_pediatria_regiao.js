@@ -1,91 +1,86 @@
-const mongoose = require('mongoose');
+const TempoEsperaEmergencia = require('../models/TemposEsperaEmergencia');
+const Hospital = require('../models/Hospital');
 
 /**
- * QUERY 3: Tempo médio de espera nas urgências pediátricas por região
- * Parâmetros: dataInicio, dataFim, regiao (opcional)
- * Agrupa por região geográfica
+ * Tempo médio de espera nas urgências pediátricas por região
+ * @param {String} inicio - Data início (YYYY-MM-DD)
+ * @param {String} fim - Data fim (YYYY-MM-DD)
  */
-async function getTempoMedioPediatricas(dataInicio, dataFim, regiao = null) {
-    try {
-        const matchStage = {
-            timestamp: {
-                $gte: new Date(dataInicio),
-                $lte: new Date(dataFim)
-            },
-            tipologia: { $regex: /pediátric/i } // Filtra urgências pediátricas
-        };
+const getMediaEsperaPediatriaRegiao = async (inicio, fim) => {
+    const dataInicio = new Date(inicio);
+    const dataFim = new Date(fim);
+    dataFim.setHours(23, 59, 59, 999);
 
-        // Filtro opcional por região
-        if (regiao) {
-            matchStage.regiao = regiao;
-        }
-
-        const pipeline = [
-            // 1. Filtrar urgências pediátricas no período
-            { $match: matchStage },
-            
-            // 2. Lookup para obter dados do hospital (região)
-            {
-                $lookup: {
-                    from: 'hospitais',
-                    localField: 'hospital_id',
-                    foreignField: 'hospital_id',
-                    as: 'hospital_info'
-                }
-            },
-            { $unwind: { path: '$hospital_info', preserveNullAndEmptyArrays: true } },
-            
-            // 3. Calcular total de utentes em espera
-            {
-                $addFields: {
-                    total_utentes_espera: {
+    return await TempoEsperaEmergencia.aggregate([
+        {
+            // 1. Filtrar por datas e tipo pediátrico
+            $match: {
+                LastUpdate: {
+                    $gte: dataInicio,
+                    $lte: dataFim
+                },
+                "EmergencyType.Description": /pediátri/i
+            }
+        },
+        {
+            // 2. Calcular tempo médio geral por hospital
+            $group: {
+                _id: "$institutionId",
+                tempo_medio_total: {
+                    $avg: {
                         $add: [
-                            { $ifNull: ['$utentes_espera.nao_urgente', 0] },
-                            { $ifNull: ['$utentes_espera.pouco_urgente', 0] },
-                            { $ifNull: ['$utentes_espera.urgente', 0] },
-                            { $ifNull: ['$utentes_espera.muito_urgente', 0] }
+                            { $ifNull: ["$Triage.Red.Time", 0] },
+                            { $ifNull: ["$Triage.Orange.Time", 0] },
+                            { $ifNull: ["$Triage.Yellow.Time", 0] },
+                            { $ifNull: ["$Triage.Green.Time", 0] },
+                            { $ifNull: ["$Triage.Blue.Time", 0] }
                         ]
-                    },
-                    regiao: { $ifNull: ['$hospital_info.regiao', 'Não Especificada'] }
+                    }
                 }
-            },
-            
-            // 4. Agrupar por região
-            {
-                $group: {
-                    _id: '$regiao',
-                    media_utentes_espera: { $avg: '$total_utentes_espera' },
-                    total_registos: { $sum: 1 },
-                    hospitais: { $addToSet: '$hospital_info.hospital_nome' }
-                }
-            },
-            
-            // 5. Formatar resultado
-            {
-                $project: {
-                    _id: 0,
-                    regiao: '$_id',
-                    media_utentes_espera: { $round: ['$media_utentes_espera', 2] },
-                    total_registos: 1,
-                    numero_hospitais: { $size: { $ifNull: ['$hospitais', []] } }
-                }
-            },
-            
-            // 6. Ordenar por região
-            { $sort: { regiao: 1 } }
-        ];
+            }
+        },
+        {
+            // 3. Converter institutionId para número para join
+            $addFields: {
+                hospital_id_num: { $toInt: "$_id" }
+            }
+        },
+        {
+            // 4. Lookup com hospitais para obter região
+            $lookup: {
+                from: 'Hospitais',
+                localField: 'hospital_id_num',
+                foreignField: 'Codigo',
+                as: 'hospital_info'
+            }
+        },
+        {
+            $unwind: {
+                path: "$hospital_info",
+                preserveNullAndEmptyArrays: true
+            }
+        },
+        {
+            // 5. Agrupar por região
+            $group: {
+                _id: "$hospital_info.Regiao",
+                tempo_medio_regiao: { $avg: "$tempo_medio_total" },
+                num_hospitais: { $sum: 1 }
+            }
+        },
+        {
+            // 6. Formatar saída
+            $project: {
+                _id: 0,
+                regiao: "$_id",
+                tempo_medio_minutos: { $round: ["$tempo_medio_regiao", 2] },
+                num_hospitais: 1
+            }
+        },
+        {
+            $sort: { tempo_medio_minutos: 1 }
+        }
+    ]);
+};
 
-        const resultado = await mongoose.connection.db
-            .collection('tempos_espera_emergencia')
-            .aggregate(pipeline)
-            .toArray();
-
-        return resultado;
-
-    } catch (erro) {
-        console.error('Erro ao calcular tempo médio pediatria:', erro);
-        throw erro;
-    }
-}
-
-module.exports = { getTempoMedioPediatricas };
+module.exports = getMediaEsperaPediatriaRegiao;
