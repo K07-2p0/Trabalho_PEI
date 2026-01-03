@@ -5,16 +5,33 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
+// Middleware - ORDEM IMPORTA!
 app.use(express.json());
-app.use(express.text({ type: 'application/xml' }));
+
+// Middleware específico para XML
+app.use(express.text({ 
+    type: ['application/xml', 'text/xml'],
+    limit: '10mb'
+}));
+
+// Middleware adicional para garantir que XML é texto
+app.use((req, res, next) => {
+    const contentType = req.get('Content-Type');
+    if (contentType && (contentType.includes('xml') || contentType.includes('XML'))) {
+        if (typeof req.body === 'object' && req.body !== null) {
+            // Se veio como objeto, converter para string
+            req.body = req.body.toString();
+        }
+    }
+    next();
+});
 
 // Conectar MongoDB
 mongoose.connect(process.env.MONGO_URI)
     .then(() => console.log('>>> MongoDB conectado com sucesso'))
     .catch(err => console.error('Erro ao conectar MongoDB:', err));
 
-// Importar Rotas (APENAS as rotas, não as pipelines)
+// Importar Rotas
 const submissaoRoutes = require('./routes/submissao');
 const relatoriosRoutes = require('./routes/relatorios');
 

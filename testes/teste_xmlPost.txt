@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ConsultaCirurgia>
+    <LastUpdate>2025-02-01T10:00:00.000Z</LastUpdate>
+    <Year>2025</Year>
+    <Month>2</Month>
+    <InstitutionCode>151</InstitutionCode>
+    <InstitutionName>Hospital de São João</InstitutionName>
+    <Specialty>
+        <Code>010101</Code>
+        <Description>Cardiologia</Description>
+    </Specialty>
+    <Type>C</Type>
+    <Patients>
+        <Total>150</Total>
+        <AverageResponseTime>45.5</AverageResponseTime>
+    </Patients>
+</ConsultaCirurgia>
